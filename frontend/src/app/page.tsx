@@ -356,7 +356,7 @@ export default function Home() {
       console.error(error);
       setMessages((prev) => [
         ...prev,
-        { role: "assistant", content: `Aiyo! ⚠️ I had trouble connecting to the backend server. Please make sure the backend is running at ${apiBaseUrl}. (${error.message})` }
+        { role: "assistant", content: `Aiyo! ⚠️ I had trouble connecting to the backend server. Please try again later. (${error.message})` }
       ]);
     } finally {
       setIsLoading(false);
