@@ -370,12 +370,8 @@ export default function Home() {
       <header className="glass-panel" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 24px", margin: "12px 24px 0", height: "64px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
           <KaprukaLogo />
-          <span style={{ fontWeight: 600, color: "#fff", fontSize: "1.1rem" }}>Agent Challenge</span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
-          <span className="glass-panel" style={{ color: "var(--brand-yellow)", fontSize: "0.85rem", padding: "6px 12px", borderRadius: "20px", fontWeight: 700, border: "1px solid rgba(255, 210, 0, 0.25)" }}>
-            lk For Sri Lankan developers
-          </span>
           <UserProfile onTrackOrder={(msg) => handleSendMessage(msg)} />
         </div>
       </header>
@@ -867,6 +863,11 @@ export default function Home() {
         </section>
 
       </main>
+
+      {/* Footer */}
+      <footer style={{ textAlign: "center", padding: "10px 24px", color: "var(--text-muted)", fontSize: "0.78rem", borderTop: "1px solid var(--glass-border)", background: "rgba(20, 10, 45, 0.4)" }}>
+        &copy; {new Date().getFullYear()} Developed by <a href="https://www.jayashan.online/" target="_blank" rel="noopener noreferrer" style={{ color: "var(--brand-yellow)", fontWeight: 700, textDecoration: "none" }}>Jayashan Manodya</a>. All rights reserved.
+      </footer>
     </div>
   );
 }
