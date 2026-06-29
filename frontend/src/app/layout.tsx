@@ -12,6 +12,11 @@ const outfit = Outfit({
 export const metadata: Metadata = {
   title: "Kapruka AI Shopping Agent | Challenge 2026",
   description: "Experience the most innovative AI shopping assistant for Kapruka Sri Lanka. Discover, compare, and inspect products in real-time.",
+  icons: {
+    icon: "/favicon.png",
+    shortcut: "/favicon.png",
+    apple: "/favicon.png",
+  },
 };
 
 export default function RootLayout({
