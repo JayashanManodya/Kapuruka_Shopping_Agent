@@ -95,6 +95,98 @@ async def get_product(product_id: str) -> dict:
 
     return result
 
+@tool
+async def list_delivery_cities(query: str = None, limit: int = None) -> dict:
+    """Returns a list of valid delivery cities from Kapruka.
+
+    Args:
+        query: Optional search query for the city.
+        limit: Optional maximum number of cities to return.
+
+    Returns:
+        JSON-compatible city list from `kapruka_list_delivery_cities`.
+    """
+    result = await client.call(
+        "kapruka_list_delivery_cities",
+        {
+            "query": query,
+            "limit": limit,
+            "response_format": "json"
+        }
+    )
+    return result
+
+@tool
+async def check_delivery(city: str, delivery_date: str = None, product_id: str = None) -> dict:
+    """Verify whether delivery is available for a given city and optionally a specific product and date.
+
+    Args:
+        city: The name of the city to check delivery for.
+        delivery_date: Optional delivery date.
+        product_id: Optional product ID to check availability for.
+
+    Returns:
+        JSON-compatible delivery availability details from `kapruka_check_delivery`.
+    """
+    result = await client.call(
+        "kapruka_check_delivery",
+        {
+            "city": city,
+            "delivery_date": delivery_date,
+            "product_id": product_id,
+            "response_format": "json"
+        }
+    )
+    return result
+
+@tool
+async def create_order(cart: list, recipient: dict, delivery: dict, sender: dict, gift_message: str = None, currency: str = None) -> dict:
+    """Create a guest checkout order.
+
+    Args:
+        cart: A list of items to order (e.g. [{"product_id": "...", "quantity": 1}]).
+        recipient: Recipient details (e.g. {"name": "...", "phone": "..."}).
+        delivery: Delivery details (e.g. {"address": "...", "city": "...", "date": "..."}).
+        sender: Sender details (e.g. {"name": "...", "anonymous": False}).
+        gift_message: Optional gift message.
+        currency: Optional currency code.
+
+    Returns:
+        JSON-compatible checkout URL and order ref from `kapruka_create_order`.
+    """
+    result = await client.call(
+        "kapruka_create_order",
+        {
+            "cart": cart,
+            "recipient": recipient,
+            "delivery": delivery,
+            "sender": sender,
+            "gift_message": gift_message,
+            "currency": currency,
+            "response_format": "json"
+        }
+    )
+    return result
+
+@tool
+async def track_order(order_number: str) -> dict:
+    """Track a paid order by order number.
+
+    Args:
+        order_number: The Kapruka order number to track.
+
+    Returns:
+        JSON-compatible order status and timeline from `kapruka_track_order`.
+    """
+    result = await client.call(
+        "kapruka_track_order",
+        {
+            "order_number": order_number,
+            "response_format": "json"
+        }
+    )
+    return result
+
 if __name__ == "__main__":
     import asyncio
 
