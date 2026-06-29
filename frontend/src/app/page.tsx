@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import { useSession } from "next-auth/react";
+import UserProfile from "./components/UserProfile";
 
 // Types
 interface Message {
@@ -182,18 +184,19 @@ const cleanAssistantText = (content: string, extractedIds: string[]) => {
 };
 
 export default function Home() {
+  const { data: session, status } = useSession();
+
   // States
   const [messages, setMessages] = useState<Message[]>([
     {
       role: "assistant",
-      content: "Aiyo! 🌸 Hello there! I am your Kapruka Shopping Agent. I can help you find, compare, and inspect the best products in Sri Lanka. What sweet chocolates or nice gifts are we searching for today?"
+      content: "Aiyo! 🌸 Hello there! I am your Kapruka Shopping Agent. I can help you find, compare, and inspect the best products in Sri Lanka. Log in with Google to save your chats and orders, or just start chatting!"
     }
   ]);
   const [inputText, setInputText] = useState("");
   const [threadId, setThreadId] = useState("session_default");
   const [isLoading, setIsLoading] = useState(false);
-  const [editingThread, setEditingThread] = useState(false);
-  const [threadInput, setThreadInput] = useState("session_default");
+  const [welcomed, setWelcomed] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -202,12 +205,28 @@ export default function Home() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isLoading]);
 
-  // Set randomized thread ID client-side to avoid hydration mismatch
+  // When user logs in, bind thread_id to their email + show personalized welcome
   useEffect(() => {
-    const randomSession = "session_" + Math.random().toString(36).substring(2, 9);
-    setThreadId(randomSession);
-    setThreadInput(randomSession);
-  }, []);
+    if (session?.user?.email) {
+      const userThread = "user_" + session.user.email.replace(/[^a-z0-9]/gi, "_");
+      setThreadId(userThread);
+
+      // Show personalized welcome only once per login
+      if (!welcomed) {
+        const firstName = session.user.name?.split(" ")[0] || "there";
+        setMessages([
+          {
+            role: "assistant",
+            content: `Ayubowan! 🙏 Welcome back, ${firstName}! Great to see you again. I'm your personal Kapruka Shopping Agent - ready to help you find the perfect gifts, check deliveries, or track your orders. What shall we do today?`
+          }
+        ]);
+        setWelcomed(true);
+      }
+    } else if (status === "unauthenticated" && !welcomed) {
+      const randomSession = "session_" + Math.random().toString(36).substring(2, 9);
+      setThreadId(randomSession);
+    }
+  }, [session, status]);
 
   // Submit Message handler
   const handleSendMessage = async (text: string) => {
@@ -227,7 +246,8 @@ export default function Home() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           message: text,
-          thread_id: threadId
+          thread_id: threadId,
+          user_email: session?.user?.email ?? null,
         })
       });
 
@@ -241,6 +261,19 @@ export default function Home() {
         setMessages(data.history);
       } else if (data.response) {
         setMessages((prev) => [...prev, { role: "assistant", content: data.response }]);
+      }
+
+      // Auto-save order numbers found in the response (checkout flow)
+      if (session?.user?.email && data.response) {
+        const orderMatches = data.response.match(/order[_\s-]?(?:ref|number|#)?[:\s]*([A-Z0-9\-]{6,20})/gi);
+        if (orderMatches) {
+          const orderNum = orderMatches[0].replace(/^.*?([A-Z0-9\-]{6,20})$/i, "$1");
+          await fetch(`${apiBaseUrl}/api/orders/save`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ user_email: session.user.email, order_number: orderNum })
+          }).catch(() => {}); // silent fail
+        }
       }
     } catch (error: any) {
       console.error(error);
@@ -259,19 +292,6 @@ export default function Home() {
     }
   };
 
-  // Update session ID
-  const handleUpdateThread = () => {
-    if (threadInput.trim() && threadInput !== threadId) {
-      setThreadId(threadInput.trim());
-      setMessages([
-        {
-          role: "assistant",
-          content: `Session updated to: **${threadInput.trim()}**. Memory loaded from state. What can I search for you?`
-        }
-      ]);
-    }
-    setEditingThread(false);
-  };
 
   return (
     <div style={{ height: "100vh", display: "flex", flexDirection: "column" }}>
@@ -282,10 +302,11 @@ export default function Home() {
           <KaprukaLogo />
           <span style={{ fontWeight: 600, color: "#fff", fontSize: "1.1rem" }}>Agent Challenge</span>
         </div>
-        <div>
+        <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
           <span className="glass-panel" style={{ color: "var(--brand-yellow)", fontSize: "0.85rem", padding: "6px 12px", borderRadius: "20px", fontWeight: 700, border: "1px solid rgba(255, 210, 0, 0.25)" }}>
             lk For Sri Lankan developers
           </span>
+          <UserProfile onTrackOrder={(msg) => handleSendMessage(msg)} />
         </div>
       </header>
 
@@ -302,12 +323,12 @@ export default function Home() {
               Build Sri Lanka's most innovative <span style={{ color: "var(--brand-yellow)" }}>AI shopping agent.</span>
             </h1>
             <p style={{ color: "var(--text-muted)", fontSize: "0.95rem", lineHeight: 1.6, marginBottom: "28px" }}>
-              We opened up the <strong>Kapruka MCP</strong> — the same tools that power search, delivery, and checkout across Sri Lanka's largest e-commerce platform. Explore search results and select product details dynamically in this full-screen shopping chat.
+              We opened up the <strong>Kapruka MCP</strong> - the same tools that power search, delivery, and checkout across Sri Lanka's largest e-commerce platform. Explore search results and select product details dynamically in this full-screen shopping chat.
             </p>
             
             <ul style={{ listStyle: "none", display: "flex", flexDirection: "column", gap: "16px", padding: 0 }}>
               <li style={{ display: "flex", alignItems: "center", gap: "12px", fontSize: "0.9rem", color: "#fff" }}>
-                <span style={{ color: "var(--brand-yellow)", fontSize: "1.1rem" }}>★</span> Free, public MCP — no API key
+                <span style={{ color: "var(--brand-yellow)", fontSize: "1.1rem" }}>★</span> Free, public MCP - no API key
               </li>
               <li style={{ display: "flex", alignItems: "center", gap: "12px", fontSize: "0.9rem", color: "#fff" }}>
                 <span style={{ color: "var(--brand-yellow)", fontSize: "1.1rem" }}>★</span> Judged by the Kapruka tech team
@@ -318,46 +339,17 @@ export default function Home() {
             </ul>
           </div>
 
-          {/* Session configuration at the bottom */}
-          <div className="glass-panel" style={{ padding: "16px", marginTop: "24px", display: "flex", flexDirection: "column", gap: "10px" }}>
-            <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", fontWeight: 700 }}>SESSION CONFIGURATION</span>
-            {editingThread ? (
-              <div style={{ display: "flex", gap: "8px" }}>
-                <input
-                  type="text"
-                  value={threadInput}
-                  onChange={(e) => setThreadInput(e.target.value)}
-                  style={{ flex: 1, background: "rgba(21, 9, 42, 0.4)", border: "1px solid var(--glass-border)", color: "#fff", padding: "6px 10px", borderRadius: "8px", fontSize: "0.85rem", outline: "none" }}
-                />
-                <button onClick={handleUpdateThread} style={{ background: "var(--brand-yellow)", color: "var(--brand-purple-dark)", border: "none", padding: "6px 12px", borderRadius: "8px", fontWeight: 700, cursor: "pointer", fontSize: "0.85rem" }}>
-                  Save
-                </button>
+          {/* Session indicator (tied to Google login) */}
+          <div className="glass-panel" style={{ padding: "14px 16px", marginTop: "24px", display: "flex", alignItems: "center", gap: "10px" }}>
+            <div style={{ width: 8, height: 8, borderRadius: "50%", background: session?.user?.email ? "#10b981" : "#f59e0b", boxShadow: session?.user?.email ? "0 0 8px #10b981" : "0 0 8px #f59e0b", flexShrink: 0 }} />
+            <div>
+              <div style={{ fontSize: "0.7rem", color: "var(--text-muted)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "1px" }}>
+                {session?.user?.email ? "Logged In" : "Guest Session"}
               </div>
-            ) : (
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span style={{ fontFamily: "monospace", fontSize: "0.9rem", color: "#fff" }}>{threadId}</span>
-                <button onClick={() => { setThreadInput(threadId); setEditingThread(true); }} style={{ background: "transparent", border: "1px solid var(--glass-border)", color: "var(--brand-yellow)", padding: "4px 8px", borderRadius: "8px", fontSize: "0.75rem", cursor: "pointer" }}>
-                  Change
-                </button>
+              <div style={{ fontSize: "0.82rem", color: "#fff", marginTop: "2px", fontFamily: "monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "280px" }}>
+                {session?.user?.email ?? threadId}
               </div>
-            )}
-            <button
-              onClick={() => {
-                const newId = "session_" + Math.random().toString(36).substring(2, 9);
-                setThreadId(newId);
-                setThreadInput(newId);
-                setMessages([
-                  {
-                    role: "assistant",
-                    content: "Aiyo! 🌸 Fresh memory loaded. Let's find some nice gifts! What are you looking for?"
-                  }
-                ]);
-              }}
-              className="glow-button-purple"
-              style={{ width: "100%", background: "var(--brand-purple-light)", border: "none", color: "#fff", padding: "8px", borderRadius: "8px", fontWeight: 600, fontSize: "0.8rem", cursor: "pointer", marginTop: "4px" }}
-            >
-              Reset Chat Session
-            </button>
+            </div>
           </div>
         </section>
 
@@ -372,8 +364,67 @@ export default function Home() {
 
           {/* Messages Feed Container */}
           <div style={{ flex: 1, overflowY: "auto", padding: "24px", display: "flex", flexDirection: "column", gap: "20px" }}>
-            {messages
-              .filter(msg => msg.role !== 'system') // Hide system prompts
+
+            {/* Quick-action chips - only shown on welcome screen (1 message, no user input yet) */}
+            {messages.length === 1 && !isLoading && (() => {
+              const chips = session?.user?.name ? [
+                { icon: "🎁", label: "Find a gift for someone special", msg: "I need a gift idea for someone special" },
+                { icon: "🍫", label: "Search chocolates & sweets", msg: "Show me chocolate gift boxes" },
+                { icon: "🌸", label: "Browse flowers & bouquets", msg: "Search for flower bouquets" },
+                { icon: "📦", label: "Track my recent order", msg: "I want to track my recent order" },
+                { icon: "🚚", label: "Check delivery to my city", msg: "Check delivery availability for my city" },
+              ] : [
+                { icon: "🎁", label: "Find a gift idea", msg: "I need a gift idea" },
+                { icon: "🍫", label: "Search chocolates", msg: "Show me chocolate gift boxes" },
+                { icon: "🌸", label: "Browse flowers", msg: "Search for flower bouquets" },
+                { icon: "🎂", label: "Order a birthday cake", msg: "I want to order a birthday cake" },
+              ];
+              return (
+                <div className="animate-fade-in" style={{ display: "flex", flexWrap: "wrap", gap: "10px", marginBottom: "8px" }}>
+                  {chips.map((chip, i) => (
+                    <button
+                      key={i}
+                      onClick={() => handleSendMessage(chip.msg)}
+                      style={{
+                        display: "flex", alignItems: "center", gap: "8px",
+                        background: "rgba(255,255,255,0.06)",
+                        border: "1px solid rgba(255,255,255,0.14)",
+                        color: "#fff", padding: "9px 16px", borderRadius: "24px",
+                        fontSize: "0.85rem", fontWeight: 500, cursor: "pointer",
+                        transition: "all 0.18s ease",
+                      }}
+                      onMouseEnter={e => {
+                        e.currentTarget.style.background = "rgba(255,210,0,0.12)";
+                        e.currentTarget.style.borderColor = "rgba(255,210,0,0.4)";
+                      }}
+                      onMouseLeave={e => {
+                        e.currentTarget.style.background = "rgba(255,255,255,0.06)";
+                        e.currentTarget.style.borderColor = "rgba(255,255,255,0.14)";
+                      }}
+                    >
+                      <span>{chip.icon}</span>
+                      <span>{chip.label}</span>
+                    </button>
+                  ))}
+                </div>
+              );
+            })()}
+
+            {(() => {
+              // Deduplicate: collapse consecutive assistant messages — keep only the last one
+              const deduped: typeof messages = [];
+              messages.forEach((msg, i) => {
+                if (
+                  msg.role === "assistant" &&
+                  i + 1 < messages.length &&
+                  messages[i + 1].role === "assistant"
+                ) {
+                  return; // skip — a newer assistant message follows
+                }
+                if (msg.role !== "system") deduped.push(msg);
+              });
+              return deduped;
+            })()
               .map((msg, index) => {
                 const isUser = msg.role === "user";
                 const isTool = msg.role === "tool";
