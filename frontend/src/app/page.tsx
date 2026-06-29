@@ -221,6 +221,7 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
   const [welcomed, setWelcomed] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   
   const [chatHistory, setChatHistory] = useState<ChatThread[]>([]);
   const [isSidebarLoading, setIsSidebarLoading] = useState(false);
@@ -251,6 +252,7 @@ export default function Home() {
 
   const loadChat = async (id: string) => {
     setThreadId(id);
+    setIsSidebarOpen(false);
     setIsLoading(true);
     const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
     try {
@@ -271,6 +273,7 @@ export default function Home() {
   const startNewChat = () => {
     const newId = "session_" + Math.random().toString(36).substring(2, 9);
     setThreadId(newId);
+    setIsSidebarOpen(false);
     const firstName = session?.user?.name?.split(" ")[0] || "there";
     setMessages([
       {
@@ -371,8 +374,17 @@ export default function Home() {
     <div style={{ height: "100vh", display: "flex", flexDirection: "column" }}>
       
       {/* Top Branded Header */}
-      <header className="glass-panel" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 24px", margin: "12px 24px 0", height: "64px" }}>
+      <header className="glass-panel header-container">
         <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+          <button
+            className="mobile-menu-btn"
+            onClick={() => setIsSidebarOpen(true)}
+            aria-label="Open Menu"
+          >
+            <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
           <KaprukaLogo />
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
@@ -381,10 +393,16 @@ export default function Home() {
       </header>
 
       {/* Main Container */}
-      <main style={{ flex: 1, display: "flex", padding: "16px 24px 24px", gap: "20px", overflow: "hidden", minHeight: 0 }}>
+      <main className="main-container">
         
+        {/* Mobile Sidebar Overlay */}
+        <div 
+          className={`sidebar-overlay ${isSidebarOpen ? 'open' : ''}`} 
+          onClick={() => setIsSidebarOpen(false)}
+        />
+
         {/* Left Sidebar Chat History */}
-        <section className="glass-card" style={{ width: "300px", padding: "16px", display: "flex", flexDirection: "column", gap: "12px", overflowY: "auto", flexShrink: 0 }}>
+        <section className={`glass-card sidebar ${isSidebarOpen ? 'open' : ''}`}>
           
           <button 
             onClick={startNewChat}
@@ -439,7 +457,7 @@ export default function Home() {
         </section>
 
         {/* Right Section Chat Interface */}
-        <section className="glass-card" style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", position: "relative" }}>
+        <section className="glass-card chat-section">
           
           {/* Active Chat Header */}
           <div style={{ padding: "16px 24px", borderBottom: "1px solid var(--glass-border)", display: "flex", alignItems: "center", gap: "12px", background: "rgba(34, 19, 69, 0.3)" }}>

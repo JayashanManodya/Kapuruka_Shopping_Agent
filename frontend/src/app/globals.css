@@ -125,3 +125,121 @@ html, body {
 }
 
 .menu-dropdown-btn:hover { background: rgba(255,255,255,0.1) !important; }
+
+/* Responsive Layout Classes */
+.header-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 24px;
+  margin: 12px 24px 0;
+  height: 64px;
+  z-index: 10;
+}
+
+.main-container {
+  flex: 1;
+  display: flex;
+  padding: 16px 24px 24px;
+  gap: 20px;
+  overflow: hidden;
+  min-height: 0;
+  position: relative;
+}
+
+.sidebar {
+  width: 300px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow-y: auto;
+  flex-shrink: 0;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 20;
+}
+
+.chat-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}
+
+.mobile-menu-btn {
+  display: none;
+  background: none;
+  border: none;
+  color: white;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 8px;
+  transition: background 0.2s;
+}
+
+.mobile-menu-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.sidebar-overlay {
+  display: none;
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 15;
+  backdrop-filter: blur(2px);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+@media (max-width: 768px) {
+  .header-container {
+    margin: 8px 12px 0;
+    padding: 8px 16px;
+  }
+  
+  .main-container {
+    padding: 12px;
+    gap: 0;
+  }
+  
+  .mobile-menu-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .sidebar {
+    position: absolute;
+    top: 12px;
+    bottom: 12px;
+    left: 12px;
+    height: calc(100% - 24px);
+    transform: translateX(-120%);
+    background: var(--card-bg);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--glass-border);
+    border-radius: 20px;
+    width: 280px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+  }
+
+  .sidebar.open {
+    transform: translateX(0);
+  }
+  
+  .sidebar-overlay.open {
+    display: block;
+    opacity: 1;
+  }
+
+  .chat-section {
+    border-radius: 20px;
+  }
+
+  /* Make user profile name hidden on small screens */
+  .user-name-text {
+    display: none;
+  }
+}

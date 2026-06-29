@@ -87,7 +87,7 @@ export default function UserProfile({ onTrackOrder }: UserProfileProps) {
             {session.user?.name?.[0]?.toUpperCase()}
           </div>
         )}
-        <span style={{ fontSize: "0.85rem", fontWeight: 600, maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+        <span className="user-name-text" style={{ fontSize: "0.85rem", fontWeight: 600, maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
           {session.user?.name?.split(" ")[0]}
         </span>
         <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor">
