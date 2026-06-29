@@ -123,3 +123,5 @@ html, body {
   box-shadow: 0 0 16px rgba(76, 53, 143, 0.4);
   transform: translateY(-1px);
 }
+
+.menu-dropdown-btn:hover { background: rgba(255,255,255,0.1) !important; }

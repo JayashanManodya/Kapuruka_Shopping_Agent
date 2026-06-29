@@ -134,6 +134,8 @@ const getProductCache = (msgs: Message[]) => {
 const extractProductIds = (text: string, cache: Record<string, NormalizedProduct>) => {
   if (!text) return [];
   const normalizedText = text.toLowerCase();
+  // Do not extract product IDs if this looks like a checkout/order confirmation response
+  if (/checkout_url|order_ref|expires_at|checkout url/i.test(text)) return [];
   const ids: string[] = [];
   
   Object.keys(cache).forEach((cachedId) => {
@@ -144,6 +146,21 @@ const extractProductIds = (text: string, cache: Record<string, NormalizedProduct
   
   // Sort them by the order they appear in the text
   return ids.sort((a, b) => normalizedText.indexOf(a) - normalizedText.indexOf(b));
+};
+
+const extractCheckoutInfo = (text: string) => {
+  if (!text) return null;
+  // Match checkout URL
+  const urlMatch = text.match(/https?:\/\/[\w./?=&%-]+kapruka[\w./?=&%-]*/i)
+    || text.match(/checkout[_\s]?url[:\s]+([^\s,\n]+)/i);
+  const refMatch = text.match(/order[_\s]?ref[:\s]*([A-Z0-9\-_]+)/i);
+  const expiresMatch = text.match(/expires[_\s]?at[:\s]*([^\n,]+)/i);
+  if (!urlMatch && !refMatch) return null;
+  return {
+    url: urlMatch?.[0] ?? null,
+    ref: refMatch?.[1] ?? null,
+    expires: expiresMatch?.[1]?.trim() ?? null,
+  };
 };
 
 const cleanAssistantText = (content: string, extractedIds: string[]) => {
@@ -568,6 +585,7 @@ export default function Home() {
                 // Assistant Message rendering
                 const extractedIds = extractProductIds(msg.content, cache);
                 const cleanedContent = cleanAssistantText(msg.content, extractedIds);
+                const checkoutInfo = extractCheckoutInfo(msg.content);
 
                 return (
                   <div
@@ -607,8 +625,65 @@ export default function Home() {
                       </div>
                     )}
 
+                    {/* Order Confirmation Card */}
+                    {checkoutInfo && (
+                      <div className="glass-panel animate-fade-in" style={{
+                        padding: "20px 24px",
+                        borderRadius: "16px",
+                        border: "1px solid rgba(245, 158, 11, 0.35)",
+                        background: "rgba(34, 19, 69, 0.6)",
+                        maxWidth: "420px",
+                        marginTop: "8px"
+                      }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "16px" }}>
+                          <span style={{ fontSize: "1.4rem" }}>🧾</span>
+                          <span style={{ fontWeight: 800, fontSize: "1rem", color: "#fff" }}>Order Ready for Checkout</span>
+                        </div>
+
+                        {checkoutInfo.ref && (
+                          <div style={{ marginBottom: "10px" }}>
+                            <div style={{ fontSize: "0.72rem", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "1px", fontWeight: 700 }}>Order Reference</div>
+                            <div style={{ fontFamily: "monospace", color: "var(--brand-yellow)", fontSize: "0.95rem", fontWeight: 700, marginTop: "2px" }}>{checkoutInfo.ref}</div>
+                          </div>
+                        )}
+
+                        {checkoutInfo.expires && (
+                          <div style={{ marginBottom: "16px" }}>
+                            <div style={{ fontSize: "0.72rem", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "1px", fontWeight: 700 }}>Expires At</div>
+                            <div style={{ color: "#e2d9f3", fontSize: "0.85rem", marginTop: "2px" }}>{checkoutInfo.expires}</div>
+                          </div>
+                        )}
+
+                        <div style={{ fontSize: "0.8rem", color: "var(--text-muted)", marginBottom: "16px", lineHeight: 1.5 }}>
+                          Note: This reference is temporary. Your final order number will be shown after payment is completed on Kapruka.
+                        </div>
+
+                        {checkoutInfo.url && (
+                          <a
+                            href={checkoutInfo.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="glow-button"
+                            style={{
+                              display: "block",
+                              background: "var(--brand-yellow)",
+                              color: "var(--brand-purple-dark)",
+                              padding: "12px 20px",
+                              borderRadius: "10px",
+                              fontWeight: 800,
+                              fontSize: "0.95rem",
+                              textAlign: "center",
+                              textDecoration: "none"
+                            }}
+                          >
+                            Proceed to Checkout
+                          </a>
+                        )}
+                      </div>
+                    )}
+
                     {/* Render product card(s) under the message */}
-                    {extractedIds.length > 0 && (
+                    {!checkoutInfo && extractedIds.length > 0 && (
                       <div style={{ width: "100%", marginTop: "4px" }}>
                         {extractedIds.length === 1 ? (
                           // Detailed layout for single product
@@ -643,16 +718,34 @@ export default function Home() {
                                       Product ID: {item.id}
                                     </div>
                                   </div>
-                                  <div style={{ marginTop: "16px", display: "flex", gap: "10px" }}>
+                                  <div style={{ marginTop: "16px", display: "flex", gap: "10px", flexWrap: "wrap" }}>
+                                    <button
+                                      onClick={() => handleSendMessage(`I want to create an order for this product. Please ask me for the required delivery details step by step.`)}
+                                      className="glow-button"
+                                      style={{ background: "var(--brand-yellow)", color: "var(--brand-purple-dark)", border: "none", padding: "8px 16px", borderRadius: "8px", fontWeight: 700, fontSize: "0.85rem", cursor: "pointer" }}
+                                    >
+                                      Create Order
+                                    </button>
+
                                     {item.url && (
                                       <a
                                         href={item.url}
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        className="glow-button"
-                                        style={{ background: "var(--brand-yellow)", color: "var(--brand-purple-dark)", padding: "8px 16px", borderRadius: "8px", fontWeight: 700, fontSize: "0.85rem", display: "inline-block", textAlign: "center", textDecoration: "none" }}
+                                        style={{
+                                          background: "rgba(255,255,255,0.07)",
+                                          color: "#e2d9f3",
+                                          padding: "8px 16px",
+                                          borderRadius: "8px",
+                                          fontWeight: 600,
+                                          fontSize: "0.85rem",
+                                          display: "inline-flex",
+                                          alignItems: "center",
+                                          textDecoration: "none",
+                                          border: "1px solid rgba(255,255,255,0.15)"
+                                        }}
                                       >
-                                        Buy on Kapruka
+                                        View on Kapruka
                                       </a>
                                     )}
                                   </div>
