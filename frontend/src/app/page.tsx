@@ -1,0 +1,656 @@
+"use client";
+
+import React, { useState, useEffect, useRef } from "react";
+
+// Types
+interface Message {
+  role: "user" | "assistant" | "tool" | "system" | "unknown";
+  content: string;
+  tool_calls?: any[];
+  tool_call_id?: string;
+  name?: string;
+}
+
+interface NormalizedProduct {
+  id: string;
+  name: string;
+  image: string;
+  price: number;
+  inStock: boolean;
+  url?: string;
+  description: string;
+}
+
+// Logo Component
+function KaprukaLogo() {
+  return (
+    <div className="flex items-center gap-1 bg-[#37246b] px-4 py-2 rounded-xl font-extrabold text-white tracking-tight select-none border border-purple-500/20" style={{ fontFamily: "var(--font-sans), sans-serif", fontSize: "1.25rem", display: "inline-flex", alignItems: "center" }}>
+      <span>kap</span>
+      <span style={{ position: "relative", display: "inline-block" }}>
+        ru
+        <svg style={{ position: "absolute", bottom: "-7px", left: "0", width: "100%" }} height="6" viewBox="0 0 24 10" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M2 2C6 7 18 7 22 2" stroke="#ffd200" strokeWidth="3" strokeLinecap="round"/>
+        </svg>
+      </span>
+      <span>ka</span>
+    </div>
+  );
+}
+
+// Robust parser for tool results (JSON in message string)
+const parseToolResult = (content: string) => {
+  try {
+    const trimmed = content.trim();
+    if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
+      return JSON.parse(trimmed);
+    }
+    
+    // Look for text='{...}'
+    const textMatch = content.match(/text='(\{[\s\S]*?\})'/);
+    if (textMatch && textMatch[1]) {
+      const cleanText = textMatch[1]
+        .replace(/\\n/g, "\n")
+        .replace(/\\"/g, '"')
+        .replace(/\\\\/g, "\\");
+      return JSON.parse(cleanText);
+    }
+    
+    // Look for text="{...}"
+    const textMatchDbl = content.match(/text="(\{[\s\S]*?\})"/);
+    if (textMatchDbl && textMatchDbl[1]) {
+      const cleanText = textMatchDbl[1]
+        .replace(/\\n/g, "\n")
+        .replace(/\\"/g, '"')
+        .replace(/\\\\/g, "\\");
+      return JSON.parse(cleanText);
+    }
+    
+    // Generic regex lookup
+    const firstBrace = content.indexOf("{");
+    const lastBrace = content.lastIndexOf("}");
+    if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+      let jsonCandidate = content.substring(firstBrace, lastBrace + 1);
+      jsonCandidate = jsonCandidate
+        .replace(/\\n/g, "\n")
+        .replace(/\\"/g, '"')
+        .replace(/\\\\/g, "\\");
+      return JSON.parse(jsonCandidate);
+    }
+  } catch (e) {
+    console.error("Failed to parse tool result JSON:", e);
+  }
+  return null;
+};
+
+// Dynamically build productCache from the message history
+const getProductCache = (msgs: Message[]) => {
+  const cache: Record<string, NormalizedProduct> = {};
+  msgs.forEach((msg) => {
+    if (msg.role === "tool") {
+      const parsed = parseToolResult(msg.content);
+      if (!parsed) return;
+
+      if (msg.name === "search_products" && parsed.results) {
+        parsed.results.forEach((item: any) => {
+          if (item.id) {
+            cache[item.id.toLowerCase()] = {
+              id: item.id,
+              name: item.name || "Unknown Product",
+              image: item.image_url || "",
+              price: item.price?.amount || 0,
+              inStock: item.in_stock === true,
+              url: item.url || "",
+              description: item.description || ""
+            };
+          }
+        });
+      } else if (msg.name === "get_product") {
+        const pId = parsed.id || parsed.product_id;
+        if (pId) {
+          cache[pId.toLowerCase()] = {
+            id: pId,
+            name: parsed.name || "Unknown Product",
+            image: parsed.images?.[0] || parsed.image_url || "",
+            price: parsed.price?.amount || 0,
+            inStock: parsed.stock_level !== "out_of_stock" && parsed.in_stock !== false,
+            url: parsed.url || "",
+            description: parsed.description || ""
+          };
+        }
+      }
+    }
+  });
+  return cache;
+};
+
+const extractProductIds = (text: string, cache: Record<string, NormalizedProduct>) => {
+  if (!text) return [];
+  const normalizedText = text.toLowerCase();
+  const ids: string[] = [];
+  
+  Object.keys(cache).forEach((cachedId) => {
+    if (normalizedText.includes(cachedId)) {
+      ids.push(cachedId);
+    }
+  });
+  
+  // Sort them by the order they appear in the text
+  return ids.sort((a, b) => normalizedText.indexOf(a) - normalizedText.indexOf(b));
+};
+
+const cleanAssistantText = (content: string, extractedIds: string[]) => {
+  if (!content) return "";
+  if (extractedIds.length === 0) return content.trim();
+  
+  const lines = content.split("\n");
+  const filteredLines = lines.filter(line => {
+    const trimmed = line.trim();
+    if (!trimmed) return true;
+    
+    // 1. Matches markdown image: ![alt](url)
+    if (/!\[.*?\]\(.*?\)/.test(trimmed)) return false;
+    
+    // 2. Matches markdown link: [text](url)
+    if (/\[.*?\]\(.*?\)/.test(trimmed)) return false;
+    
+    // 3. Matches numbered list header for a product, e.g. "1. **Name**" or "1. Name"
+    if (/^\d+[\.\)-]\s+(\*\*|)/.test(trimmed)) return false;
+    
+    // 4. Matches specification bullets like "- **Price:** 500 LKR" or "- Price: 500 LKR"
+    if (/^[-*]\s+\*\*.*?\*\*/i.test(trimmed) || /^[-*]\s+[A-Za-z\s]+:/i.test(trimmed)) return false;
+    
+    // 5. Matches sub-bullets/indented lines in spec details, e.g. "  - Satisfying crunchy texture"
+    if (/^\s+[-*]\s+/.test(line)) return false;
+    
+    // 6. Matches standalone product ID lines, price lines, stock status, url links
+    if (/product id/i.test(trimmed) || 
+        /product link/i.test(trimmed) || 
+        /lkr/i.test(trimmed) || 
+        /stock status/i.test(trimmed) || 
+        /price:/i.test(trimmed) || 
+        /http/i.test(trimmed)) {
+      return false;
+    }
+    
+    return true;
+  });
+  
+  return filteredLines
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+};
+
+export default function Home() {
+  // States
+  const [messages, setMessages] = useState<Message[]>([
+    {
+      role: "assistant",
+      content: "Aiyo! 🌸 Hello there! I am your Kapruka Shopping Agent. I can help you find, compare, and inspect the best products in Sri Lanka. What sweet chocolates or nice gifts are we searching for today?"
+    }
+  ]);
+  const [inputText, setInputText] = useState("");
+  const [threadId, setThreadId] = useState("session_default");
+  const [isLoading, setIsLoading] = useState(false);
+  const [editingThread, setEditingThread] = useState(false);
+  const [threadInput, setThreadInput] = useState("session_default");
+
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll on new messages
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, isLoading]);
+
+  // Set randomized thread ID client-side to avoid hydration mismatch
+  useEffect(() => {
+    const randomSession = "session_" + Math.random().toString(36).substring(2, 9);
+    setThreadId(randomSession);
+    setThreadInput(randomSession);
+  }, []);
+
+  // Submit Message handler
+  const handleSendMessage = async (text: string) => {
+    if (!text.trim() || isLoading) return;
+
+    // Add user message
+    const userMsg: Message = { role: "user", content: text };
+    setMessages((prev) => [...prev, userMsg]);
+    setInputText("");
+    setIsLoading(true);
+
+    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
+    try {
+      const response = await fetch(`${apiBaseUrl}/api/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: text,
+          thread_id: threadId
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error("Server responded with error status: " + response.status);
+      }
+
+      const data = await response.json();
+      if (data.history && data.history.length > 0) {
+        // Update entire history to capture tool message nodes
+        setMessages(data.history);
+      } else if (data.response) {
+        setMessages((prev) => [...prev, { role: "assistant", content: data.response }]);
+      }
+    } catch (error: any) {
+      console.error(error);
+      setMessages((prev) => [
+        ...prev,
+        { role: "assistant", content: `Aiyo! ⚠️ I had trouble connecting to the backend server. Please make sure the backend is running at ${apiBaseUrl}. (${error.message})` }
+      ]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      handleSendMessage(inputText);
+    }
+  };
+
+  // Update session ID
+  const handleUpdateThread = () => {
+    if (threadInput.trim() && threadInput !== threadId) {
+      setThreadId(threadInput.trim());
+      setMessages([
+        {
+          role: "assistant",
+          content: `Session updated to: **${threadInput.trim()}**. Memory loaded from state. What can I search for you?`
+        }
+      ]);
+    }
+    setEditingThread(false);
+  };
+
+  return (
+    <div style={{ height: "100vh", display: "flex", flexDirection: "column" }}>
+      
+      {/* Top Branded Header */}
+      <header className="glass-panel" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 24px", margin: "12px 24px 0", height: "64px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+          <KaprukaLogo />
+          <span style={{ fontWeight: 600, color: "#fff", fontSize: "1.1rem" }}>Agent Challenge</span>
+        </div>
+        <div>
+          <span className="glass-panel" style={{ color: "var(--brand-yellow)", fontSize: "0.85rem", padding: "6px 12px", borderRadius: "20px", fontWeight: 700, border: "1px solid rgba(255, 210, 0, 0.25)" }}>
+            lk For Sri Lankan developers
+          </span>
+        </div>
+      </header>
+
+      {/* Main Container */}
+      <main style={{ flex: 1, display: "flex", padding: "16px 24px 24px", gap: "20px", overflow: "hidden", minHeight: 0 }}>
+        
+        {/* Left Sidebar Challenge Information */}
+        <section className="glass-card" style={{ width: "380px", padding: "28px", display: "flex", flexDirection: "column", justifyContent: "space-between", overflowY: "auto" }}>
+          <div>
+            <span style={{ fontSize: "0.75rem", letterSpacing: "1.5px", color: "var(--text-muted)", fontWeight: 700, textTransform: "uppercase" }}>
+              KAPRUKA AGENT CHALLENGE · 2026
+            </span>
+            <h1 style={{ fontSize: "2rem", fontWeight: 800, lineHeight: 1.2, margin: "16px 0 20px", color: "#fff" }}>
+              Build Sri Lanka's most innovative <span style={{ color: "var(--brand-yellow)" }}>AI shopping agent.</span>
+            </h1>
+            <p style={{ color: "var(--text-muted)", fontSize: "0.95rem", lineHeight: 1.6, marginBottom: "28px" }}>
+              We opened up the <strong>Kapruka MCP</strong> — the same tools that power search, delivery, and checkout across Sri Lanka's largest e-commerce platform. Explore search results and select product details dynamically in this full-screen shopping chat.
+            </p>
+            
+            <ul style={{ listStyle: "none", display: "flex", flexDirection: "column", gap: "16px", padding: 0 }}>
+              <li style={{ display: "flex", alignItems: "center", gap: "12px", fontSize: "0.9rem", color: "#fff" }}>
+                <span style={{ color: "var(--brand-yellow)", fontSize: "1.1rem" }}>★</span> Free, public MCP — no API key
+              </li>
+              <li style={{ display: "flex", alignItems: "center", gap: "12px", fontSize: "0.9rem", color: "#fff" }}>
+                <span style={{ color: "var(--brand-yellow)", fontSize: "1.1rem" }}>★</span> Judged by the Kapruka tech team
+              </li>
+              <li style={{ display: "flex", alignItems: "center", gap: "12px", fontSize: "0.9rem", color: "#fff" }}>
+                <span style={{ color: "var(--brand-yellow)", fontSize: "1.1rem" }}>★</span> Entries close 30 June 2026
+              </li>
+            </ul>
+          </div>
+
+          {/* Session configuration at the bottom */}
+          <div className="glass-panel" style={{ padding: "16px", marginTop: "24px", display: "flex", flexDirection: "column", gap: "10px" }}>
+            <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", fontWeight: 700 }}>SESSION CONFIGURATION</span>
+            {editingThread ? (
+              <div style={{ display: "flex", gap: "8px" }}>
+                <input
+                  type="text"
+                  value={threadInput}
+                  onChange={(e) => setThreadInput(e.target.value)}
+                  style={{ flex: 1, background: "rgba(21, 9, 42, 0.4)", border: "1px solid var(--glass-border)", color: "#fff", padding: "6px 10px", borderRadius: "8px", fontSize: "0.85rem", outline: "none" }}
+                />
+                <button onClick={handleUpdateThread} style={{ background: "var(--brand-yellow)", color: "var(--brand-purple-dark)", border: "none", padding: "6px 12px", borderRadius: "8px", fontWeight: 700, cursor: "pointer", fontSize: "0.85rem" }}>
+                  Save
+                </button>
+              </div>
+            ) : (
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ fontFamily: "monospace", fontSize: "0.9rem", color: "#fff" }}>{threadId}</span>
+                <button onClick={() => { setThreadInput(threadId); setEditingThread(true); }} style={{ background: "transparent", border: "1px solid var(--glass-border)", color: "var(--brand-yellow)", padding: "4px 8px", borderRadius: "8px", fontSize: "0.75rem", cursor: "pointer" }}>
+                  Change
+                </button>
+              </div>
+            )}
+            <button
+              onClick={() => {
+                const newId = "session_" + Math.random().toString(36).substring(2, 9);
+                setThreadId(newId);
+                setThreadInput(newId);
+                setMessages([
+                  {
+                    role: "assistant",
+                    content: "Aiyo! 🌸 Fresh memory loaded. Let's find some nice gifts! What are you looking for?"
+                  }
+                ]);
+              }}
+              className="glow-button-purple"
+              style={{ width: "100%", background: "var(--brand-purple-light)", border: "none", color: "#fff", padding: "8px", borderRadius: "8px", fontWeight: 600, fontSize: "0.8rem", cursor: "pointer", marginTop: "4px" }}
+            >
+              Reset Chat Session
+            </button>
+          </div>
+        </section>
+
+        {/* Right Section Chat Interface */}
+        <section className="glass-card" style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", position: "relative" }}>
+          
+          {/* Active Chat Header */}
+          <div style={{ padding: "16px 24px", borderBottom: "1px solid var(--glass-border)", display: "flex", alignItems: "center", gap: "12px", background: "rgba(34, 19, 69, 0.3)" }}>
+            <div style={{ width: "10px", height: "10px", borderRadius: "50%", background: "#10b981", boxShadow: "0 0 8px #10b981" }}></div>
+            <span style={{ fontWeight: 600, color: "#fff" }}>Kapruka Shopping Assistant</span>
+          </div>
+
+          {/* Messages Feed Container */}
+          <div style={{ flex: 1, overflowY: "auto", padding: "24px", display: "flex", flexDirection: "column", gap: "20px" }}>
+            {messages
+              .filter(msg => msg.role !== 'system') // Hide system prompts
+              .map((msg, index) => {
+                const isUser = msg.role === "user";
+                const isTool = msg.role === "tool";
+                
+                // Get the product cache from history
+                const cache = getProductCache(messages);
+
+                if (isTool) {
+                  // Render tool messages as clean, compact system badges instead of full grids
+                  if (msg.name === "search_products") {
+                    return (
+                      <div key={index} className="animate-fade-in" style={{ alignSelf: "flex-start", margin: "4px 4px" }}>
+                        <span style={{ fontSize: "0.8rem", color: "var(--text-muted)", background: "rgba(255, 255, 255, 0.05)", padding: "6px 12px", borderRadius: "12px", border: "1px solid var(--glass-border)", display: "inline-flex", alignItems: "center", gap: "6px" }}>
+                          <span style={{ color: "var(--brand-yellow)" }}>🔍</span> Searched Kapruka products
+                        </span>
+                      </div>
+                    );
+                  }
+                  
+                  if (msg.name === "get_product") {
+                    return (
+                      <div key={index} className="animate-fade-in" style={{ alignSelf: "flex-start", margin: "4px 4px" }}>
+                        <span style={{ fontSize: "0.8rem", color: "var(--text-muted)", background: "rgba(255, 255, 255, 0.05)", padding: "6px 12px", borderRadius: "12px", border: "1px solid var(--glass-border)", display: "inline-flex", alignItems: "center", gap: "6px" }}>
+                          <span style={{ color: "var(--brand-yellow)" }}>📦</span> Retrieved product details
+                        </span>
+                      </div>
+                    );
+                  }
+                  
+                  return null; // Skip rendering other tool calls to keep chat clean
+                }
+
+                // Render Normal messages
+                if (!msg.content) return null; // Skip empty tool triggers
+
+                if (isUser) {
+                  return (
+                    <div
+                      key={index}
+                      className="animate-fade-in"
+                      style={{
+                        alignSelf: "flex-end",
+                        maxWidth: "75%",
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "flex-end"
+                      }}
+                    >
+                      <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginBottom: "4px", padding: "0 4px" }}>
+                        YOU
+                      </span>
+                      <div
+                        style={{
+                          background: "var(--brand-purple-light)",
+                          padding: "14px 18px",
+                          borderRadius: "16px 16px 4px 16px",
+                          color: "#fff",
+                          fontSize: "0.95rem",
+                          lineHeight: 1.5,
+                          whiteSpace: "pre-wrap",
+                          border: "1px solid rgba(255, 255, 255, 0.1)"
+                        }}
+                      >
+                        {msg.content}
+                      </div>
+                    </div>
+                  );
+                }
+
+                // Assistant Message rendering
+                const extractedIds = extractProductIds(msg.content, cache);
+                const cleanedContent = cleanAssistantText(msg.content, extractedIds);
+
+                return (
+                  <div
+                    key={index}
+                    className="animate-fade-in"
+                    style={{
+                      alignSelf: "flex-start",
+                      maxWidth: "85%",
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "flex-start",
+                      width: "100%"
+                    }}
+                  >
+                    <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginBottom: "4px", padding: "0 4px" }}>
+                      KAPRUKA AGENT
+                    </span>
+                    
+                    {/* Render clean text response if there is any remaining content */}
+                    {cleanedContent && (
+                      <div
+                        className="glass-panel"
+                        style={{
+                          background: "rgba(34, 19, 69, 0.4)",
+                          padding: "14px 18px",
+                          borderRadius: "16px 16px 16px 4px",
+                          color: "#fff",
+                          fontSize: "0.95rem",
+                          lineHeight: 1.5,
+                          whiteSpace: "pre-wrap",
+                          border: "1px solid var(--glass-border)",
+                          marginBottom: extractedIds.length > 0 ? "12px" : "0",
+                          maxWidth: "88%"
+                        }}
+                      >
+                        {cleanedContent}
+                      </div>
+                    )}
+
+                    {/* Render product card(s) under the message */}
+                    {extractedIds.length > 0 && (
+                      <div style={{ width: "100%", marginTop: "4px" }}>
+                        {extractedIds.length === 1 ? (
+                          // Detailed layout for single product
+                          (() => {
+                            const item = cache[extractedIds[0]];
+                            return (
+                              <div className="glass-panel animate-fade-in" style={{ padding: "20px", display: "flex", gap: "20px", borderRadius: "16px", flexWrap: "wrap", maxWidth: "90%" }}>
+                                {item.image && (
+                                  <img
+                                    src={item.image}
+                                    alt={item.name}
+                                    style={{ width: "180px", height: "180px", objectFit: "contain", borderRadius: "12px", background: "#fff", flexShrink: 0 }}
+                                  />
+                                )}
+                                <div style={{ flex: 1, minWidth: "220px", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+                                  <div>
+                                    <h2 style={{ fontSize: "1.2rem", fontWeight: 800, color: "#fff", marginBottom: "8px" }}>{item.name}</h2>
+                                    <div style={{ display: "flex", gap: "10px", alignItems: "center", marginBottom: "12px" }}>
+                                      <span style={{ color: "var(--brand-yellow)", fontWeight: 800, fontSize: "1.2rem" }}>
+                                        {item.price ? `${item.price.toLocaleString()} LKR` : "Price N/A"}
+                                      </span>
+                                      <span style={{ fontSize: "0.75rem", color: item.inStock ? "#10b981" : "#ef4444", background: item.inStock ? "rgba(16, 185, 129, 0.15)" : "rgba(239, 68, 68, 0.15)", padding: "2px 8px", borderRadius: "6px" }}>
+                                        {item.inStock ? "In Stock" : "Out of Stock"}
+                                      </span>
+                                    </div>
+                                    {item.description && (
+                                      <p style={{ color: "var(--text-muted)", fontSize: "0.85rem", lineHeight: 1.5, maxHeight: "100px", overflowY: "auto", paddingRight: "6px" }}>
+                                        {item.description}
+                                      </p>
+                                    )}
+                                    <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: "8px", fontFamily: "monospace" }}>
+                                      Product ID: {item.id}
+                                    </div>
+                                  </div>
+                                  <div style={{ marginTop: "16px", display: "flex", gap: "10px" }}>
+                                    {item.url && (
+                                      <a
+                                        href={item.url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="glow-button"
+                                        style={{ background: "var(--brand-yellow)", color: "var(--brand-purple-dark)", padding: "8px 16px", borderRadius: "8px", fontWeight: 700, fontSize: "0.85rem", display: "inline-block", textAlign: "center", textDecoration: "none" }}
+                                      >
+                                        Buy on Kapruka
+                                      </a>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })()
+                        ) : (
+                          // Grid layout for multiple products
+                          <div className="product-grid" style={{ maxWidth: "100%" }}>
+                            {extractedIds.map((id, optIdx) => {
+                              const item = cache[id];
+                              return (
+                                <div key={item.id} className="glass-panel animate-fade-in" style={{ padding: "12px", display: "flex", flexDirection: "column", justifyContent: "space-between", gap: "10px", borderRadius: "14px" }}>
+                                  {item.image && (
+                                    <img
+                                      src={item.image}
+                                      alt={item.name}
+                                      style={{ width: "100%", height: "130px", objectFit: "contain", borderRadius: "10px", background: "#fff" }}
+                                    />
+                                  )}
+                                  <div>
+                                    <h3 style={{ fontSize: "0.9rem", fontWeight: 700, color: "#fff", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", height: "36px" }}>
+                                      {item.name}
+                                    </h3>
+                                    <div style={{ fontSize: "0.72rem", color: "var(--text-muted)", marginTop: "4px", fontFamily: "monospace" }}>
+                                      ID: {item.id}
+                                    </div>
+                                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "8px" }}>
+                                      <span style={{ color: "var(--brand-yellow)", fontWeight: 800, fontSize: "0.92rem" }}>
+                                        {item.price ? `${item.price.toLocaleString()} LKR` : "Price N/A"}
+                                      </span>
+                                      <span style={{ fontSize: "0.68rem", color: item.inStock ? "#10b981" : "#ef4444", background: item.inStock ? "rgba(16, 185, 129, 0.12)" : "rgba(239, 68, 68, 0.12)", padding: "2px 6px", borderRadius: "4px" }}>
+                                        {item.inStock ? "In Stock" : "Out of"}
+                                      </span>
+                                    </div>
+                                  </div>
+                                  <button
+                                    onClick={() => handleSendMessage(`Please retrieve details for product ${item.id}`)}
+                                    className="glow-button"
+                                    style={{ width: "100%", background: "var(--brand-yellow)", color: "var(--brand-purple-dark)", border: "none", padding: "8px", borderRadius: "8px", fontWeight: 700, fontSize: "0.8rem", cursor: "pointer" }}
+                                  >
+                                    View Details
+                                  </button>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+
+            {/* Chatbot Typing Loader */}
+            {isLoading && (
+              <div style={{ alignSelf: "flex-start", display: "flex", flexDirection: "column", gap: "4px" }}>
+                <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginLeft: "4px" }}>KAPRUKA AGENT</span>
+                <div className="glass-panel" style={{ padding: "14px 20px", borderRadius: "16px 16px 16px 4px", display: "flex", gap: "6px", alignItems: "center" }}>
+                  <div className="typing-dot"></div>
+                  <div className="typing-dot"></div>
+                  <div className="typing-dot"></div>
+                </div>
+              </div>
+            )}
+
+            <div ref={messagesEndRef} />
+          </div>
+
+          {/* Interactive Chat Input Bar */}
+          <div style={{ padding: "20px 24px", borderTop: "1px solid var(--glass-border)", background: "rgba(21, 9, 42, 0.4)" }}>
+            <div style={{ display: "flex", gap: "12px", position: "relative" }}>
+              <input
+                type="text"
+                placeholder="Ask for chocolate, gifts, flowers, cakes..."
+                value={inputText}
+                onChange={(e) => setInputText(e.target.value)}
+                onKeyDown={handleKeyPress}
+                disabled={isLoading}
+                style={{
+                  flex: 1,
+                  background: "rgba(34, 19, 69, 0.6)",
+                  border: "1px solid var(--glass-border)",
+                  borderRadius: "14px",
+                  padding: "16px 20px",
+                  color: "#fff",
+                  fontSize: "0.95rem",
+                  outline: "none",
+                  transition: "border-color 0.2s",
+                  boxShadow: "inset 0 2px 4px rgba(0, 0, 0, 0.2)"
+                }}
+              />
+              <button
+                onClick={() => handleSendMessage(inputText)}
+                disabled={isLoading || !inputText.trim()}
+                className="glow-button"
+                style={{
+                  background: "var(--brand-yellow)",
+                  color: "var(--brand-purple-dark)",
+                  border: "none",
+                  borderRadius: "14px",
+                  padding: "0 24px",
+                  fontWeight: 700,
+                  fontSize: "0.95rem",
+                  cursor: isLoading || !inputText.trim() ? "not-allowed" : "pointer",
+                  opacity: isLoading || !inputText.trim() ? 0.6 : 1,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px"
+                }}
+              >
+                Send
+              </button>
+            </div>
+          </div>
+
+        </section>
+
+      </main>
+    </div>
+  );
+}

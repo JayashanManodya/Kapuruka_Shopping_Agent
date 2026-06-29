@@ -1,4 +1,4 @@
-from langchain_groq import ChatGroq
+from langchain_openai import ChatOpenAI
 from langchain.agents import create_agent
 from langgraph.checkpoint.memory import MemorySaver
 import json
@@ -14,8 +14,8 @@ except ImportError:
 from app.core.config.settings import settings
 from app.core.config.prompts import SYSTEM_PROMPT
 
-# Instantiate the LLM model using Groq settings configured via BaseSettings
-llm = ChatGroq(model=settings.llm_model, groq_api_key=settings.groq_api_key)
+# Instantiate the LLM model using OpenAI settings configured via BaseSettings
+llm = ChatOpenAI(model=settings.llm_model, openai_api_key=settings.openai_api_key)
 
 # In-memory checkpointer for thread session management
 memory = MemorySaver()
