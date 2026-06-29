@@ -7,7 +7,7 @@ import json
 from datetime import datetime, timezone
 
 from app.core.agents.agent import workflow, DB_PATH, serialize_messages
-from app.core.db.database import create_db_and_tables, get_session, User, UserOrder
+from app.core.db.database import create_db_and_tables, get_session, User, UserOrder, ChatThread
 from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 
 app = FastAPI(title="Kapruka Shopping Agent API")
@@ -49,7 +49,7 @@ class SaveOrderRequest(BaseModel):
 # Chat endpoint (persistent SQLite memory)
 # ─────────────────────────────────────────
 @app.post("/api/chat")
-async def chat(request: ChatRequest):
+async def chat(request: ChatRequest, session: AsyncSession = Depends(get_session)):
     config = {"configurable": {"thread_id": request.thread_id}}
     try:
         async with AsyncSqliteSaver.from_conn_string(DB_PATH) as checkpointer:
@@ -66,11 +66,72 @@ async def chat(request: ChatRequest):
         history_json_str = serialize_messages(response.get("messages", []))
         history_list = json.loads(history_json_str)
 
+        # Update ChatThread metadata if user is logged in
+        if request.user_email:
+            result = await session.execute(
+                select(ChatThread).where(ChatThread.thread_id == request.thread_id)
+            )
+            chat_thread = result.scalar_one_or_none()
+            now_iso = datetime.now(timezone.utc).isoformat()
+            
+            if not chat_thread:
+                # Use the first few words of the user message as title
+                title = " ".join(request.message.split()[:5])
+                if len(request.message.split()) > 5:
+                    title += "..."
+                chat_thread = ChatThread(
+                    thread_id=request.thread_id,
+                    user_email=request.user_email,
+                    title=title,
+                    updated_at=now_iso
+                )
+                session.add(chat_thread)
+            else:
+                chat_thread.updated_at = now_iso
+            await session.commit()
+
         return {"response": latest_reply, "history": history_list}
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
+# ─────────────────────────────────────────
+# Get all chat threads for a user
+# ─────────────────────────────────────────
+@app.get("/api/chats/{user_email}")
+async def get_chats(user_email: str, session: AsyncSession = Depends(get_session)):
+    # Get all threads ordered by updated_at descending
+    result = await session.execute(
+        select(ChatThread)
+        .where(ChatThread.user_email == user_email)
+        .order_by(ChatThread.updated_at.desc())
+    )
+    threads = result.scalars().all()
+    return {"chats": [t.model_dump() for t in threads]}
+
+
+# ─────────────────────────────────────────
+# Get history for a specific thread
+# ─────────────────────────────────────────
+@app.get("/api/chat/{thread_id}")
+async def get_chat_history(thread_id: str):
+    config = {"configurable": {"thread_id": thread_id}}
+    try:
+        async with AsyncSqliteSaver.from_conn_string(DB_PATH) as checkpointer:
+            # We don't invoke the agent here, we just read from the checkpointer
+            state = await checkpointer.aget(config)
+            
+            if not state or "channel_values" not in state or "messages" not in state["channel_values"]:
+                return {"history": []}
+                
+            messages = state["channel_values"]["messages"]
+            history_json_str = serialize_messages(messages)
+            history_list = json.loads(history_json_str)
+            return {"history": history_list}
+            
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 # ─────────────────────────────────────────
 # Auth Sync: create or fetch user on login

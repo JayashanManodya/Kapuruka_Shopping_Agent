@@ -23,6 +23,12 @@ interface NormalizedProduct {
   description: string;
 }
 
+interface ChatThread {
+  thread_id: string;
+  title: string;
+  updated_at: string;
+}
+
 // Logo Component
 function KaprukaLogo() {
   return (
@@ -197,6 +203,9 @@ export default function Home() {
   const [threadId, setThreadId] = useState("session_default");
   const [isLoading, setIsLoading] = useState(false);
   const [welcomed, setWelcomed] = useState(false);
+  
+  const [chatHistory, setChatHistory] = useState<ChatThread[]>([]);
+  const [isSidebarLoading, setIsSidebarLoading] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -205,21 +214,60 @@ export default function Home() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isLoading]);
 
-  // When user logs in, bind thread_id to their email + show personalized welcome
+  const fetchChats = async () => {
+    if (!session?.user?.email) return;
+    setIsSidebarLoading(true);
+    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+    try {
+      const res = await fetch(`${apiBaseUrl}/api/chats/${session.user.email}`);
+      const data = await res.json();
+      if (data.chats) {
+        setChatHistory(data.chats);
+      }
+    } catch (e) {
+      console.error("Failed to fetch chats", e);
+    } finally {
+      setIsSidebarLoading(false);
+    }
+  };
+
+  const loadChat = async (id: string) => {
+    setThreadId(id);
+    setIsLoading(true);
+    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+    try {
+      const res = await fetch(`${apiBaseUrl}/api/chat/${id}`);
+      const data = await res.json();
+      if (data.history && data.history.length > 0) {
+        setMessages(data.history);
+      } else {
+        setMessages([{ role: "assistant", content: "Ayubowan! Ready to continue our chat." }]);
+      }
+    } catch (e) {
+      console.error("Failed to load chat", e);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const startNewChat = () => {
+    const newId = "session_" + Math.random().toString(36).substring(2, 9);
+    setThreadId(newId);
+    const firstName = session?.user?.name?.split(" ")[0] || "there";
+    setMessages([
+      {
+        role: "assistant",
+        content: `Ayubowan! 🙏 Welcome back, ${firstName}! Great to see you again. I'm your personal Kapruka Shopping Agent - ready to help you find the perfect gifts, check deliveries, or track your orders. What shall we do today?`
+      }
+    ]);
+  };
+
+  // When user logs in, load chat history and start a new session
   useEffect(() => {
     if (session?.user?.email) {
-      const userThread = "user_" + session.user.email.replace(/[^a-z0-9]/gi, "_");
-      setThreadId(userThread);
-
-      // Show personalized welcome only once per login
       if (!welcomed) {
-        const firstName = session.user.name?.split(" ")[0] || "there";
-        setMessages([
-          {
-            role: "assistant",
-            content: `Ayubowan! 🙏 Welcome back, ${firstName}! Great to see you again. I'm your personal Kapruka Shopping Agent - ready to help you find the perfect gifts, check deliveries, or track your orders. What shall we do today?`
-          }
-        ]);
+        startNewChat();
+        fetchChats();
         setWelcomed(true);
       }
     } else if (status === "unauthenticated" && !welcomed) {
@@ -275,6 +323,11 @@ export default function Home() {
           }).catch(() => {}); // silent fail
         }
       }
+
+      // Refresh sidebar if logged in
+      if (session?.user?.email) {
+        fetchChats();
+      }
     } catch (error: any) {
       console.error(error);
       setMessages((prev) => [
@@ -313,43 +366,58 @@ export default function Home() {
       {/* Main Container */}
       <main style={{ flex: 1, display: "flex", padding: "16px 24px 24px", gap: "20px", overflow: "hidden", minHeight: 0 }}>
         
-        {/* Left Sidebar Challenge Information */}
-        <section className="glass-card" style={{ width: "380px", padding: "28px", display: "flex", flexDirection: "column", justifyContent: "space-between", overflowY: "auto" }}>
-          <div>
-            <span style={{ fontSize: "0.75rem", letterSpacing: "1.5px", color: "var(--text-muted)", fontWeight: 700, textTransform: "uppercase" }}>
-              KAPRUKA AGENT CHALLENGE · 2026
+        {/* Left Sidebar Chat History */}
+        <section className="glass-card" style={{ width: "300px", padding: "16px", display: "flex", flexDirection: "column", gap: "12px", overflowY: "auto", flexShrink: 0 }}>
+          
+          <button 
+            onClick={startNewChat}
+            className="glow-button"
+            style={{ width: "100%", background: "var(--brand-yellow)", color: "var(--brand-purple-dark)", border: "none", padding: "12px", borderRadius: "8px", fontWeight: 700, fontSize: "0.9rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}
+          >
+            <span style={{ fontSize: "1.2rem", lineHeight: 1 }}>+</span> New Chat
+          </button>
+          
+          <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: "4px", marginTop: "12px" }}>
+            <span style={{ fontSize: "0.75rem", letterSpacing: "1px", color: "var(--text-muted)", fontWeight: 700, textTransform: "uppercase", marginBottom: "8px", paddingLeft: "8px" }}>
+              Recent Chats
             </span>
-            <h1 style={{ fontSize: "2rem", fontWeight: 800, lineHeight: 1.2, margin: "16px 0 20px", color: "#fff" }}>
-              Build Sri Lanka's most innovative <span style={{ color: "var(--brand-yellow)" }}>AI shopping agent.</span>
-            </h1>
-            <p style={{ color: "var(--text-muted)", fontSize: "0.95rem", lineHeight: 1.6, marginBottom: "28px" }}>
-              We opened up the <strong>Kapruka MCP</strong> - the same tools that power search, delivery, and checkout across Sri Lanka's largest e-commerce platform. Explore search results and select product details dynamically in this full-screen shopping chat.
-            </p>
             
-            <ul style={{ listStyle: "none", display: "flex", flexDirection: "column", gap: "16px", padding: 0 }}>
-              <li style={{ display: "flex", alignItems: "center", gap: "12px", fontSize: "0.9rem", color: "#fff" }}>
-                <span style={{ color: "var(--brand-yellow)", fontSize: "1.1rem" }}>★</span> Free, public MCP - no API key
-              </li>
-              <li style={{ display: "flex", alignItems: "center", gap: "12px", fontSize: "0.9rem", color: "#fff" }}>
-                <span style={{ color: "var(--brand-yellow)", fontSize: "1.1rem" }}>★</span> Judged by the Kapruka tech team
-              </li>
-              <li style={{ display: "flex", alignItems: "center", gap: "12px", fontSize: "0.9rem", color: "#fff" }}>
-                <span style={{ color: "var(--brand-yellow)", fontSize: "1.1rem" }}>★</span> Entries close 30 June 2026
-              </li>
-            </ul>
-          </div>
-
-          {/* Session indicator (tied to Google login) */}
-          <div className="glass-panel" style={{ padding: "14px 16px", marginTop: "24px", display: "flex", alignItems: "center", gap: "10px" }}>
-            <div style={{ width: 8, height: 8, borderRadius: "50%", background: session?.user?.email ? "#10b981" : "#f59e0b", boxShadow: session?.user?.email ? "0 0 8px #10b981" : "0 0 8px #f59e0b", flexShrink: 0 }} />
-            <div>
-              <div style={{ fontSize: "0.7rem", color: "var(--text-muted)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "1px" }}>
-                {session?.user?.email ? "Logged In" : "Guest Session"}
+            {session?.user ? (
+              isSidebarLoading ? (
+                <div style={{ padding: "12px 8px", color: "var(--text-muted)", fontSize: "0.85rem" }}>Loading chats...</div>
+              ) : chatHistory.length > 0 ? (
+                chatHistory.map((chat) => (
+                  <button
+                    key={chat.thread_id}
+                    onClick={() => loadChat(chat.thread_id)}
+                    style={{
+                      background: threadId === chat.thread_id ? "rgba(255,255,255,0.1)" : "transparent",
+                      border: "none",
+                      padding: "12px",
+                      borderRadius: "8px",
+                      textAlign: "left",
+                      cursor: "pointer",
+                      color: "#fff",
+                      fontSize: "0.9rem",
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      transition: "background 0.2s"
+                    }}
+                    onMouseEnter={(e) => { if (threadId !== chat.thread_id) e.currentTarget.style.background = "rgba(255,255,255,0.05)" }}
+                    onMouseLeave={(e) => { if (threadId !== chat.thread_id) e.currentTarget.style.background = "transparent" }}
+                  >
+                    {chat.title}
+                  </button>
+                ))
+              ) : (
+                <div style={{ padding: "12px 8px", color: "var(--text-muted)", fontSize: "0.85rem" }}>No previous chats.</div>
+              )
+            ) : (
+              <div style={{ padding: "12px 8px", color: "var(--text-muted)", fontSize: "0.85rem", lineHeight: 1.5 }}>
+                Log in with Google to save and view your chat history.
               </div>
-              <div style={{ fontSize: "0.82rem", color: "#fff", marginTop: "2px", fontFamily: "monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "280px" }}>
-                {session?.user?.email ?? threadId}
-              </div>
-            </div>
+            )}
           </div>
         </section>
 
@@ -462,35 +530,38 @@ export default function Home() {
 
                 if (isUser) {
                   return (
-                    <div
-                      key={index}
-                      className="animate-fade-in"
-                      style={{
-                        alignSelf: "flex-end",
-                        maxWidth: "75%",
-                        display: "flex",
-                        flexDirection: "column",
-                        alignItems: "flex-end"
-                      }}
-                    >
-                      <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginBottom: "4px", padding: "0 4px" }}>
-                        YOU
-                      </span>
                       <div
+                        key={index}
+                        className="animate-fade-in"
                         style={{
-                          background: "var(--brand-purple-light)",
-                          padding: "14px 18px",
-                          borderRadius: "16px 16px 4px 16px",
-                          color: "#fff",
-                          fontSize: "0.95rem",
-                          lineHeight: 1.5,
-                          whiteSpace: "pre-wrap",
-                          border: "1px solid rgba(255, 255, 255, 0.1)"
+                          alignSelf: "flex-end",
+                          maxWidth: "75%",
+                          display: "flex",
+                          flexDirection: "row",
+                          alignItems: "flex-end",
+                          gap: "10px"
                         }}
                       >
-                        {msg.content}
+                        <div
+                          style={{
+                            background: "var(--brand-purple-light)",
+                            padding: "14px 18px",
+                            borderRadius: "16px 16px 4px 16px",
+                            color: "#fff",
+                            fontSize: "0.95rem",
+                            lineHeight: 1.5,
+                            whiteSpace: "pre-wrap",
+                            border: "1px solid rgba(255, 255, 255, 0.1)"
+                          }}
+                        >
+                          {msg.content}
+                        </div>
+                        {session?.user?.image ? (
+                          <img src={session.user.image} alt="User" style={{ width: 36, height: 36, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }} />
+                        ) : (
+                          <div style={{ width: 36, height: 36, borderRadius: "50%", background: "#4b328a", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.9rem", color: "#fff", fontWeight: "600", flexShrink: 0 }}>U</div>
+                        )}
                       </div>
-                    </div>
                   );
                 }
 
@@ -506,14 +577,14 @@ export default function Home() {
                       alignSelf: "flex-start",
                       maxWidth: "85%",
                       display: "flex",
-                      flexDirection: "column",
-                      alignItems: "flex-start",
+                      flexDirection: "row",
+                      alignItems: "flex-end",
+                      gap: "10px",
                       width: "100%"
                     }}
                   >
-                    <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginBottom: "4px", padding: "0 4px" }}>
-                      KAPRUKA AGENT
-                    </span>
+                    <img src="/agent_photo.png" alt="Kapruka Agent" style={{ width: 36, height: 36, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }} />
+                    <div style={{ display: "flex", flexDirection: "column", gap: "8px", flex: 1 }}>
                     
                     {/* Render clean text response if there is any remaining content */}
                     {cleanedContent && (
@@ -634,6 +705,7 @@ export default function Home() {
                       </div>
                     )}
                   </div>
+                </div>
                 );
               })}
 

@@ -37,6 +37,12 @@ class UserOrder(SQLModel, table=True):
     product_name: Optional[str] = None
     created_at: Optional[str] = None  # ISO datetime string
 
+class ChatThread(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    thread_id: str = Field(unique=True, index=True)
+    user_email: str = Field(index=True, foreign_key="user.email")
+    title: str = Field(default="New Chat")
+    updated_at: str  # ISO datetime string
 
 def create_db_and_tables():
     """Create all DB tables using sync engine (called at app startup)."""
