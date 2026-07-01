@@ -298,7 +298,9 @@ export default function Home() {
         setCartItems(data.cart);
       }
     } catch (e) {
-      console.error("Failed to fetch cart", e);
+      // Use console.warn instead of console.error to prevent Next.js from showing a dev overlay 
+      // when the backend server is temporarily restarting or offline.
+      console.warn("Failed to fetch cart: Backend might be temporarily unavailable.");
     } finally {
       setIsCartLoading(false);
     }
