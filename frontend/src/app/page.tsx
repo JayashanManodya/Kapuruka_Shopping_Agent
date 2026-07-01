@@ -217,6 +217,17 @@ const cleanAssistantText = (content: string, extractedIds: string[]) => {
     .trim();
 };
 
+const renderFormattedText = (text: string) => {
+  if (!text) return null;
+  const parts = text.split(/\*\*(.*?)\*\*/g);
+  return parts.map((part, index) => {
+    if (index % 2 === 1) {
+      return <strong key={index} style={{ fontWeight: 800, color: "#fff" }}>{part}</strong>;
+    }
+    return <span key={index}>{part}</span>;
+  });
+};
+
 export default function Home() {
   const { data: session, status } = useSession();
 
@@ -741,7 +752,7 @@ export default function Home() {
                           border: "1px solid rgba(255, 255, 255, 0.1)"
                         }}
                       >
-                        {msg.content}
+                        {renderFormattedText(msg.content)}
                       </div>
                       {session?.user?.image ? (
                         <img src={session.user.image} alt="User" style={{ width: 36, height: 36, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }} />
@@ -791,7 +802,7 @@ export default function Home() {
                             maxWidth: "88%"
                           }}
                         >
-                          {cleanedContent}
+                          {renderFormattedText(cleanedContent)}
                         </div>
                       )}
 
