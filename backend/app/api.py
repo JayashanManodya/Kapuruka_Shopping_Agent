@@ -276,6 +276,26 @@ class CheckoutRequest(BaseModel):
     cart: list[AddCartItemRequest]
     thread_id: str
 
+class SystemMessageRequest(BaseModel):
+    content: str
+
+@app.post("/api/chat/{thread_id}/system_message")
+async def inject_system_message(thread_id: str, request: SystemMessageRequest):
+    """Directly inject an Assistant message into the chat history without invoking the LLM."""
+    try:
+        from app.core.agents.agent import workflow, DB_PATH
+        from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
+        from langchain_core.messages import AIMessage
+        
+        config = {"configurable": {"thread_id": thread_id}}
+        async with AsyncSqliteSaver.from_conn_string(DB_PATH) as checkpointer:
+            agent = workflow.compile(checkpointer=checkpointer)
+            await agent.aupdate_state(config, {"messages": [{"role": "assistant", "content": request.content}]})
+            
+        return {"status": "success"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to persist message: {str(e)}")
+
 @app.post("/api/checkout")
 async def process_checkout(request: CheckoutRequest):
     from app.core.agents.tools import client

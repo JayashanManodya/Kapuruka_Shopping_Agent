@@ -257,6 +257,8 @@ export default function Home() {
     giftMessage: ""
   });
   const [paymentUrl, setPaymentUrl] = useState<string | null>(null);
+  const [showPostPaymentDialog, setShowPostPaymentDialog] = useState(false);
+  const [currentOrderRef, setCurrentOrderRef] = useState<string | null>(null);
 
   const [chatHistory, setChatHistory] = useState<ChatThread[]>([]);
   const [isSidebarLoading, setIsSidebarLoading] = useState(false);
@@ -383,6 +385,7 @@ export default function Home() {
           content: `Your order has been created successfully! 🎉\n\nOrder Ref: ${data.order_ref}\nCheckout URL: ${data.checkout_url}`
         };
         setMessages((prev) => [...prev, syntheticMsg]);
+        setCurrentOrderRef(data.order_ref);
         setCheckoutForm({ name: "", address: "", city: "", date: "", phone: "", giftMessage: "" });
       }
     } catch (e) {
@@ -391,6 +394,51 @@ export default function Home() {
     } finally {
       setIsCheckoutLoading(false);
     }
+  };
+
+  const handlePaymentSuccess = async () => {
+    setShowPostPaymentDialog(false);
+    
+    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
+    // Clear cart in backend if user is logged in
+    if (session?.user?.email) {
+      try {
+        await fetch(`${apiBaseUrl}/api/cart/${session.user.email}/clear`, { method: "POST" });
+      } catch (e) {
+        console.error("Failed to clear cart in backend:", e);
+      }
+    }
+    
+    // Clear local cart state
+    setCartItems([]);
+    
+    const msgContent = `Thank you for confirming! I have cleared your cart for you. You can track your order status anytime using your Order Reference: **${currentOrderRef || "See Above"}**`;
+
+    // Persist to chat database
+    try {
+      await fetch(`${apiBaseUrl}/api/chat/${threadId}/system_message`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: msgContent })
+      });
+    } catch (e) {
+      console.error("Failed to persist system message:", e);
+    }
+    
+    // Inject success agent message locally for instant UI update
+    const syntheticMsg: Message = {
+      role: "assistant",
+      content: msgContent
+    };
+    setMessages((prev) => [...prev, syntheticMsg]);
+  };
+
+  const handlePaymentPending = () => {
+    setShowPostPaymentDialog(false);
+    
+    // Show a popup alert instead of injecting an agent message
+    alert("No worries! You can click 'Proceed to Checkout' on the Order Confirmation Card whenever you are ready to complete your payment.");
   };
 
   const loadChat = async (id: string) => {
@@ -895,7 +943,7 @@ export default function Home() {
                           )}
 
                           <div style={{ fontSize: "0.8rem", color: "var(--text-muted)", marginBottom: "16px", lineHeight: 1.5 }}>
-                            Note: This reference is temporary. Your final order number will be shown after payment is completed on Kapruka.
+                            Note: This reference is temporary. Your final order number will be shown after payment is completed on Kapruka. Please check your email for the final tracking number. If you want to track your order, simply paste that number right here into the chat!
                           </div>
 
                           {checkoutInfo.url && (
@@ -1139,7 +1187,7 @@ export default function Home() {
           >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 24px", background: "var(--brand-purple-dark)", color: "#fff" }}>
               <h2 style={{ margin: 0, fontSize: "1.2rem", fontWeight: 700 }}>Secure Checkout</h2>
-              <button onClick={() => setPaymentUrl(null)} style={{ background: "transparent", border: "none", color: "#fff", cursor: "pointer", fontSize: "1.5rem" }}>&times;</button>
+              <button onClick={() => { setPaymentUrl(null); setShowPostPaymentDialog(true); }} style={{ background: "transparent", border: "none", color: "#fff", cursor: "pointer", fontSize: "1.5rem" }}>&times;</button>
             </div>
             <div style={{ flex: 1, position: "relative" }}>
               <iframe 
@@ -1147,6 +1195,62 @@ export default function Home() {
                 style={{ width: "100%", height: "100%", border: "none" }}
                 title="Kapruka Secure Checkout"
               />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Post-Payment Dialog Modal */}
+      {showPostPaymentDialog && (
+        <div
+          style={{
+            position: "fixed", inset: 0, zIndex: 1200,
+            background: "rgba(10, 4, 30, 0.75)",
+            backdropFilter: "blur(6px)",
+            display: "flex", alignItems: "center", justifyContent: "center"
+          }}
+        >
+          <div
+            className="glass-card animate-fade-in"
+            style={{
+              padding: "36px 40px",
+              maxWidth: "400px",
+              width: "90%",
+              borderRadius: "20px",
+              display: "flex",
+              flexDirection: "column",
+              gap: "16px",
+              border: "1px solid rgba(255, 210, 0, 0.2)"
+            }}
+          >
+            <div style={{ textAlign: "center", fontSize: "3rem", marginBottom: "-10px" }}>💳</div>
+            <h2 style={{ fontSize: "1.3rem", fontWeight: 800, color: "#fff", textAlign: "center", margin: 0 }}>
+              Payment Status
+            </h2>
+            <p style={{ color: "var(--text-muted)", fontSize: "0.95rem", lineHeight: 1.6, textAlign: "center", margin: 0 }}>
+              Did you complete your Kapruka checkout payment successfully?
+            </p>
+            
+            <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginTop: "12px" }}>
+              <button
+                onClick={handlePaymentSuccess}
+                className="glow-button"
+                style={{
+                  width: "100%", background: "var(--brand-yellow)", color: "var(--brand-purple-dark)", 
+                  padding: "14px", borderRadius: "10px", fontWeight: 800, border: "none", cursor: "pointer"
+                }}
+              >
+                Yes, I Paid Successfully
+              </button>
+              <button
+                onClick={handlePaymentPending}
+                style={{
+                  width: "100%", background: "transparent", color: "#fff", 
+                  padding: "12px", borderRadius: "10px", fontWeight: 600, border: "1px solid rgba(255,255,255,0.15)", cursor: "pointer"
+                }}
+              >
+                No, Not Yet
+              </button>
             </div>
           </div>
         </div>
