@@ -233,6 +233,9 @@ export default function Home() {
   const [welcomed, setWelcomed] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [cartItems, setCartItems] = useState<any[]>([]);
+  const [isCartOpen, setIsCartOpen] = useState(false);
+  const [isCartLoading, setIsCartLoading] = useState(false);
 
   const [chatHistory, setChatHistory] = useState<ChatThread[]>([]);
   const [isSidebarLoading, setIsSidebarLoading] = useState(false);
@@ -259,6 +262,65 @@ export default function Home() {
     } finally {
       setIsSidebarLoading(false);
     }
+  };
+
+  const fetchCart = async () => {
+    if (!session?.user?.email) return;
+    setIsCartLoading(true);
+    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+    try {
+      const res = await fetch(`${apiBaseUrl}/api/cart/${session.user.email}`);
+      const data = await res.json();
+      if (data.cart) {
+        setCartItems(data.cart);
+      }
+    } catch (e) {
+      console.error("Failed to fetch cart", e);
+    } finally {
+      setIsCartLoading(false);
+    }
+  };
+
+  const addToCart = async (item: any) => {
+    if (!session?.user?.email) {
+      setShowLoginModal(true);
+      return;
+    }
+    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+    try {
+      await fetch(`${apiBaseUrl}/api/cart/${session.user.email}/add`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          product_id: item.id,
+          product_name: item.name,
+          price: item.price || 0,
+          image: item.image || "",
+        }),
+      });
+      fetchCart(); // Refresh cart to get new quantities
+      setIsCartOpen(true);
+    } catch (e) {
+      console.error("Failed to add to cart", e);
+    }
+  };
+
+  const removeFromCart = async (productId: string) => {
+    if (!session?.user?.email) return;
+    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+    try {
+      await fetch(`${apiBaseUrl}/api/cart/${session.user.email}/remove/${productId}`, { method: "POST" });
+      fetchCart();
+    } catch (e) {
+      console.error("Failed to remove from cart", e);
+    }
+  };
+
+  const handleCartCheckout = () => {
+    if (cartItems.length === 0) return;
+    setIsCartOpen(false);
+    const summary = cartItems.map(c => `${c.quantity}x ${c.product_name} (${c.product_id})`).join(", ");
+    handleSendMessage(`I want to checkout with these items: ${summary}. Please ask me for the required delivery details step by step.`);
   };
 
   const loadChat = async (id: string) => {
@@ -298,6 +360,7 @@ export default function Home() {
   useEffect(() => {
     if (session?.user?.email) {
       setShowLoginModal(false);
+      fetchCart();
       if (!welcomed) {
         startNewChat();
         fetchChats();
@@ -399,6 +462,19 @@ export default function Home() {
           <KaprukaLogo />
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
+          {session?.user && (
+            <button
+              onClick={() => setIsCartOpen(true)}
+              style={{ background: "transparent", border: "1px solid rgba(255,255,255,0.2)", borderRadius: "8px", padding: "8px 12px", color: "#fff", cursor: "pointer", display: "flex", gap: "8px", alignItems: "center" }}
+            >
+              🛒 Cart
+              {cartItems.length > 0 && (
+                <span style={{ background: "var(--brand-yellow)", color: "#000", padding: "2px 6px", borderRadius: "12px", fontSize: "0.75rem", fontWeight: "bold" }}>
+                  {cartItems.reduce((acc, i) => acc + i.quantity, 0)}
+                </span>
+              )}
+            </button>
+          )}
           <UserProfile onTrackOrder={(msg) => handleSendMessage(msg)} />
         </div>
       </header>
@@ -411,6 +487,71 @@ export default function Home() {
           className={`sidebar-overlay ${isSidebarOpen ? 'open' : ''}`}
           onClick={() => setIsSidebarOpen(false)}
         />
+
+        {/* Cart Slide-out Panel */}
+        <div
+          className={`sidebar-overlay ${isCartOpen ? 'open' : ''}`}
+          onClick={() => setIsCartOpen(false)}
+          style={{ zIndex: 199, display: isCartOpen ? 'block' : 'none' }}
+        />
+        <div
+          className={`glass-card`}
+          style={{
+            position: "fixed", top: 0, right: 0, bottom: 0, width: "350px", maxWidth: "90vw", zIndex: 200,
+            transform: isCartOpen ? "translateX(0)" : "translateX(100%)",
+            transition: "transform 0.3s ease",
+            display: "flex", flexDirection: "column",
+            borderLeft: "1px solid rgba(255,255,255,0.1)",
+            borderRadius: "0", background: "rgba(34, 19, 69, 0.95)"
+          }}
+        >
+          <div style={{ padding: "20px", borderBottom: "1px solid rgba(255,255,255,0.1)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <h2 style={{ color: "#fff", fontSize: "1.2rem", margin: 0 }}>Your Cart</h2>
+            <button onClick={() => setIsCartOpen(false)} style={{ background: "transparent", border: "none", color: "#fff", cursor: "pointer", fontSize: "1.5rem" }}>×</button>
+          </div>
+          <div style={{ flex: 1, overflowY: "auto", padding: "20px", display: "flex", flexDirection: "column", gap: "16px" }}>
+            {isCartLoading ? (
+              <div style={{ color: "var(--text-muted)", textAlign: "center" }}>Loading cart...</div>
+            ) : cartItems.length === 0 ? (
+              <div style={{ color: "var(--text-muted)", textAlign: "center" }}>Your cart is empty.</div>
+            ) : (
+              cartItems.map(item => (
+                <div key={item.product_id} style={{ display: "flex", gap: "12px", background: "rgba(255,255,255,0.05)", padding: "12px", borderRadius: "12px", alignItems: "center" }}>
+                  {item.image ? (
+                    <img src={item.image} alt={item.product_name} style={{ width: 60, height: 60, objectFit: "contain", background: "#fff", borderRadius: "8px" }} />
+                  ) : (
+                    <div style={{ width: 60, height: 60, background: "rgba(255,255,255,0.1)", borderRadius: "8px" }} />
+                  )}
+                  <div style={{ flex: 1 }}>
+                    <div style={{ color: "#fff", fontSize: "0.9rem", fontWeight: "bold" }}>{item.product_name}</div>
+                    <div style={{ color: "var(--brand-yellow)", fontSize: "0.85rem", marginTop: "4px" }}>
+                      {item.price ? `${item.price.toLocaleString()} LKR` : "N/A"} x {item.quantity}
+                    </div>
+                  </div>
+                  <button onClick={() => removeFromCart(item.product_id)} style={{ background: "rgba(239, 68, 68, 0.2)", color: "#ef4444", border: "none", borderRadius: "50%", width: 30, height: 30, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    🗑
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
+          <div style={{ padding: "20px", borderTop: "1px solid rgba(255,255,255,0.1)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", color: "#fff", fontSize: "1.1rem", fontWeight: "bold", marginBottom: "16px" }}>
+              <span>Total:</span>
+              <span style={{ color: "var(--brand-yellow)" }}>
+                {cartItems.reduce((acc, item) => acc + ((item.price || 0) * item.quantity), 0).toLocaleString()} LKR
+              </span>
+            </div>
+            <button
+              onClick={handleCartCheckout}
+              disabled={cartItems.length === 0}
+              className="glow-button"
+              style={{ width: "100%", background: "var(--brand-yellow)", color: "var(--brand-purple-dark)", border: "none", padding: "14px", borderRadius: "8px", fontWeight: 700, fontSize: "1rem", cursor: cartItems.length === 0 ? "not-allowed" : "pointer", opacity: cartItems.length === 0 ? 0.5 : 1 }}
+            >
+              Checkout Now
+            </button>
+          </div>
+        </div>
 
         {/* Left Sidebar Chat History */}
         <section className={`glass-card sidebar ${isSidebarOpen ? 'open' : ''}`}>
@@ -749,11 +890,11 @@ export default function Home() {
                                     </div>
                                     <div style={{ marginTop: "16px", display: "flex", gap: "10px", flexWrap: "wrap" }}>
                                       <button
-                                        onClick={() => handleSendMessage(`I want to create an order for this product. Please ask me for the required delivery details step by step.`)}
+                                        onClick={() => addToCart(item)}
                                         className="glow-button"
                                         style={{ background: "var(--brand-yellow)", color: "var(--brand-purple-dark)", border: "none", padding: "8px 16px", borderRadius: "8px", fontWeight: 700, fontSize: "0.85rem", cursor: "pointer" }}
                                       >
-                                        Create Order
+                                        Add to Cart
                                       </button>
 
                                       {item.url && (

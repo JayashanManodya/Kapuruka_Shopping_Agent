@@ -7,7 +7,7 @@ import json
 from datetime import datetime, timezone
 
 from app.core.agents.agent import workflow, DB_PATH, serialize_messages
-from app.core.db.database import create_db_and_tables, get_session, User, UserOrder, ChatThread
+from app.core.db.database import create_db_and_tables, get_session, User, UserOrder, ChatThread, CartItem
 from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 
 app = FastAPI(title="Kapruka Shopping Agent API")
@@ -43,6 +43,12 @@ class SaveOrderRequest(BaseModel):
     user_email: str
     order_number: str
     product_name: str | None = None
+
+class AddCartItemRequest(BaseModel):
+    product_id: str
+    product_name: str
+    price: float | None = None
+    image: str | None = None
 
 
 # ─────────────────────────────────────────
@@ -190,6 +196,66 @@ async def get_orders(user_email: str, session: AsyncSession = Depends(get_sessio
     )
     orders = result.scalars().all()
     return {"orders": [o.model_dump() for o in orders]}
+
+# ─────────────────────────────────────────
+# Cart Endpoints
+# ─────────────────────────────────────────
+@app.get("/api/cart/{user_email}")
+async def get_cart(user_email: str, session: AsyncSession = Depends(get_session)):
+    result = await session.execute(
+        select(CartItem).where(CartItem.user_email == user_email)
+    )
+    items = result.scalars().all()
+    return {"cart": [i.model_dump() for i in items]}
+
+@app.post("/api/cart/{user_email}/add")
+async def add_to_cart(user_email: str, request: AddCartItemRequest, session: AsyncSession = Depends(get_session)):
+    result = await session.execute(
+        select(CartItem).where(
+            CartItem.user_email == user_email,
+            CartItem.product_id == request.product_id
+        )
+    )
+    existing = result.scalar_one_or_none()
+    if existing:
+        existing.quantity += 1
+    else:
+        new_item = CartItem(
+            user_email=user_email,
+            product_id=request.product_id,
+            product_name=request.product_name,
+            price=request.price,
+            image=request.image,
+            quantity=1
+        )
+        session.add(new_item)
+    await session.commit()
+    return {"status": "added"}
+
+@app.post("/api/cart/{user_email}/remove/{product_id}")
+async def remove_from_cart(user_email: str, product_id: str, session: AsyncSession = Depends(get_session)):
+    result = await session.execute(
+        select(CartItem).where(
+            CartItem.user_email == user_email,
+            CartItem.product_id == product_id
+        )
+    )
+    existing = result.scalar_one_or_none()
+    if existing:
+        await session.delete(existing)
+        await session.commit()
+    return {"status": "removed"}
+
+@app.post("/api/cart/{user_email}/clear")
+async def clear_cart(user_email: str, session: AsyncSession = Depends(get_session)):
+    result = await session.execute(
+        select(CartItem).where(CartItem.user_email == user_email)
+    )
+    items = result.scalars().all()
+    for item in items:
+        await session.delete(item)
+    await session.commit()
+    return {"status": "cleared"}
 
 
 if __name__ == "__main__":

@@ -44,6 +44,15 @@ class ChatThread(SQLModel, table=True):
     title: str = Field(default="New Chat")
     updated_at: str  # ISO datetime string
 
+class CartItem(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_email: str = Field(index=True, foreign_key="user.email")
+    product_id: str
+    product_name: str
+    price: Optional[float] = None
+    image: Optional[str] = None
+    quantity: int = Field(default=1)
+
 def create_db_and_tables():
     """Create all DB tables using sync engine (called at app startup)."""
     SQLModel.metadata.create_all(sync_engine)
