@@ -151,11 +151,11 @@ const extractProductIds = (text: string, cache: Record<string, NormalizedProduct
 
 const extractCheckoutInfo = (text: string) => {
   if (!text) return null;
-  
+
   let url = null;
   const directMatch = text.match(/https?:\/\/[\w./?=&%-]*kapruka\.com\/(?:checkout|payment|pay)[\w./?=&%-]*/i);
   const keywordMatch = text.match(/checkout[_\s]?url[:\s]+([^\s,\n]+)/i);
-  
+
   if (directMatch) {
     url = directMatch[0];
   } else if (keywordMatch) {
@@ -164,9 +164,9 @@ const extractCheckoutInfo = (text: string) => {
 
   const refMatch = text.match(/order[_\s]?ref[:\s]*([A-Z0-9\-_]+)/i);
   const expiresMatch = text.match(/expires[_\s]?at[:\s]*([^\n,]+)/i);
-  
+
   if (!url && !refMatch) return null;
-  
+
   return {
     url: url,
     ref: refMatch?.[1] ?? null,
@@ -235,7 +235,7 @@ export default function Home() {
   const [messages, setMessages] = useState<Message[]>([
     {
       role: "assistant",
-      content: "Hello! 🌸 I am your Kapruka Shopping Agent. I can help you find, compare, and inspect the best products in Sri Lanka. Log in with Google to save your chats and orders, or just start chatting!"
+      content: "Hello! I am your Kapruka Shopping Agent. I can help you find, compare, and inspect the best products in Sri Lanka. Log in with Google to save your chats and orders, or just start chatting!"
     }
   ]);
   const [inputText, setInputText] = useState("");
@@ -247,6 +247,16 @@ export default function Home() {
   const [cartItems, setCartItems] = useState<any[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isCartLoading, setIsCartLoading] = useState(false);
+  const [showCheckoutModal, setShowCheckoutModal] = useState(false);
+  const [checkoutForm, setCheckoutForm] = useState({
+    name: "",
+    address: "",
+    city: "",
+    date: "",
+    phone: "",
+    giftMessage: ""
+  });
+  const [paymentUrl, setPaymentUrl] = useState<string | null>(null);
 
   const [chatHistory, setChatHistory] = useState<ChatThread[]>([]);
   const [isSidebarLoading, setIsSidebarLoading] = useState(false);
@@ -330,8 +340,57 @@ export default function Home() {
   const handleCartCheckout = () => {
     if (cartItems.length === 0) return;
     setIsCartOpen(false);
-    const summary = cartItems.map(c => `${c.quantity}x ${c.product_name} (${c.product_id})`).join(", ");
-    handleSendMessage(`I want to checkout with these items: ${summary}. Please ask me for the required delivery details step by step.`);
+    setShowCheckoutModal(true);
+  };
+
+  const [isCheckoutLoading, setIsCheckoutLoading] = useState(false);
+
+  const submitCheckoutForm = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsCheckoutLoading(true);
+    
+    const checkoutPayload = {
+      name: checkoutForm.name,
+      phone: checkoutForm.phone,
+      gift_message: checkoutForm.giftMessage || undefined,
+      delivery: {
+        address: checkoutForm.address,
+        city: checkoutForm.city,
+        date: checkoutForm.date
+      },
+      cart: cartItems,
+      thread_id: threadId
+    };
+
+    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
+    try {
+      const res = await fetch(`${apiBaseUrl}/api/checkout`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(checkoutPayload)
+      });
+      
+      const data = await res.json();
+      
+      if (!res.ok) {
+        alert(data.detail || "Failed to process checkout. Please try again.");
+      } else {
+        setShowCheckoutModal(false);
+        // Inject a synthetic assistant message to display the checkout URL using existing UI
+        const syntheticMsg: Message = {
+          role: "assistant",
+          content: `Your order has been created successfully! 🎉\n\nOrder Ref: ${data.order_ref}\nCheckout URL: ${data.checkout_url}`
+        };
+        setMessages((prev) => [...prev, syntheticMsg]);
+        setCheckoutForm({ name: "", address: "", city: "", date: "", phone: "", giftMessage: "" });
+      }
+    } catch (e) {
+      console.error("Checkout failed:", e);
+      alert("Network error. Please try again.");
+    } finally {
+      setIsCheckoutLoading(false);
+    }
   };
 
   const loadChat = async (id: string) => {
@@ -840,12 +899,11 @@ export default function Home() {
                           </div>
 
                           {checkoutInfo.url && (
-                            <a
-                              href={checkoutInfo.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
+                            <button
+                              onClick={() => setPaymentUrl(checkoutInfo.url)}
                               className="glow-button"
                               style={{
+                                width: "100%",
                                 display: "block",
                                 background: "var(--brand-yellow)",
                                 color: "var(--brand-purple-dark)",
@@ -854,11 +912,12 @@ export default function Home() {
                                 fontWeight: 800,
                                 fontSize: "0.95rem",
                                 textAlign: "center",
-                                textDecoration: "none"
+                                border: "none",
+                                cursor: "pointer"
                               }}
                             >
                               Proceed to Checkout
-                            </a>
+                            </button>
                           )}
                         </div>
                       )}
@@ -1053,6 +1112,111 @@ export default function Home() {
       <footer style={{ textAlign: "center", padding: "10px 24px", color: "var(--text-muted)", fontSize: "0.78rem", borderTop: "1px solid var(--glass-border)", background: "rgba(20, 10, 45, 0.4)" }}>
         &copy; {new Date().getFullYear()} Developed by <a href="https://www.jayashan.online/" target="_blank" rel="noopener noreferrer" style={{ color: "var(--brand-yellow)", fontWeight: 700, textDecoration: "none" }}>Jayashan Manodya</a>. All rights reserved.
       </footer>
+      {/* Payment Iframe Modal */}
+      {paymentUrl && (
+        <div
+          style={{
+            position: "fixed", inset: 0, zIndex: 1100,
+            background: "rgba(10, 4, 30, 0.85)",
+            backdropFilter: "blur(8px)",
+            display: "flex", alignItems: "center", justifyContent: "center"
+          }}
+        >
+          <div
+            className="glass-card animate-fade-in"
+            style={{
+              width: "100%",
+              height: "100%",
+              maxWidth: "600px",
+              maxHeight: "90vh",
+              borderRadius: "20px",
+              display: "flex",
+              flexDirection: "column",
+              background: "#fff",
+              overflow: "hidden",
+              position: "relative"
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 24px", background: "var(--brand-purple-dark)", color: "#fff" }}>
+              <h2 style={{ margin: 0, fontSize: "1.2rem", fontWeight: 700 }}>Secure Checkout</h2>
+              <button onClick={() => setPaymentUrl(null)} style={{ background: "transparent", border: "none", color: "#fff", cursor: "pointer", fontSize: "1.5rem" }}>&times;</button>
+            </div>
+            <div style={{ flex: 1, position: "relative" }}>
+              <iframe 
+                src={paymentUrl} 
+                style={{ width: "100%", height: "100%", border: "none" }}
+                title="Kapruka Secure Checkout"
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Checkout Form Modal */}
+      {showCheckoutModal && (
+        <div
+          style={{
+            position: "fixed", inset: 0, zIndex: 1000,
+            background: "rgba(10, 4, 30, 0.75)",
+            backdropFilter: "blur(6px)",
+            display: "flex", alignItems: "center", justifyContent: "center"
+          }}
+        >
+          <div
+            className="glass-card animate-fade-in"
+            style={{
+              padding: "36px 40px",
+              maxWidth: "500px",
+              width: "90%",
+              borderRadius: "20px",
+              display: "flex",
+              flexDirection: "column",
+              gap: "20px",
+              border: "1px solid rgba(255, 210, 0, 0.2)",
+              maxHeight: "90vh",
+              overflowY: "auto"
+            }}
+          >
+            <h2 style={{ fontSize: "1.3rem", fontWeight: 800, color: "#fff", margin: 0 }}>
+              Checkout Details
+            </h2>
+            <form onSubmit={submitCheckoutForm} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                <label style={{ fontSize: "0.85rem", color: "var(--text-muted)", fontWeight: 600 }}>Recipient Name *</label>
+                <input required type="text" value={checkoutForm.name} onChange={e => setCheckoutForm({...checkoutForm, name: e.target.value})} style={{ background: "rgba(34, 19, 69, 0.6)", border: "1px solid var(--glass-border)", borderRadius: "10px", padding: "12px", color: "#fff", outline: "none" }} />
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                <label style={{ fontSize: "0.85rem", color: "var(--text-muted)", fontWeight: 600 }}>Delivery Address *</label>
+                <input required type="text" value={checkoutForm.address} onChange={e => setCheckoutForm({...checkoutForm, address: e.target.value})} style={{ background: "rgba(34, 19, 69, 0.6)", border: "1px solid var(--glass-border)", borderRadius: "10px", padding: "12px", color: "#fff", outline: "none" }} />
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                <label style={{ fontSize: "0.85rem", color: "var(--text-muted)", fontWeight: 600 }}>City *</label>
+                <input required type="text" value={checkoutForm.city} onChange={e => setCheckoutForm({...checkoutForm, city: e.target.value})} style={{ background: "rgba(34, 19, 69, 0.6)", border: "1px solid var(--glass-border)", borderRadius: "10px", padding: "12px", color: "#fff", outline: "none" }} />
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                <label style={{ fontSize: "0.85rem", color: "var(--text-muted)", fontWeight: 600 }}>Delivery Date (YYYY-MM-DD) *</label>
+                <input required type="date" value={checkoutForm.date} onChange={e => setCheckoutForm({...checkoutForm, date: e.target.value})} style={{ background: "rgba(34, 19, 69, 0.6)", border: "1px solid var(--glass-border)", borderRadius: "10px", padding: "12px", color: "#fff", outline: "none" }} />
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                <label style={{ fontSize: "0.85rem", color: "var(--text-muted)", fontWeight: 600 }}>Contact Number *</label>
+                <input required type="text" value={checkoutForm.phone} onChange={e => setCheckoutForm({...checkoutForm, phone: e.target.value})} style={{ background: "rgba(34, 19, 69, 0.6)", border: "1px solid var(--glass-border)", borderRadius: "10px", padding: "12px", color: "#fff", outline: "none" }} />
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                <label style={{ fontSize: "0.85rem", color: "var(--text-muted)", fontWeight: 600 }}>Gift Message (Optional)</label>
+                <textarea value={checkoutForm.giftMessage} onChange={e => setCheckoutForm({...checkoutForm, giftMessage: e.target.value})} rows={3} style={{ background: "rgba(34, 19, 69, 0.6)", border: "1px solid var(--glass-border)", borderRadius: "10px", padding: "12px", color: "#fff", outline: "none", resize: "none" }} />
+              </div>
+              
+              <div style={{ display: "flex", gap: "12px", marginTop: "10px" }}>
+                <button type="button" onClick={() => setShowCheckoutModal(false)} style={{ flex: 1, background: "transparent", border: "1px solid rgba(255,255,255,0.15)", color: "var(--text-muted)", padding: "12px", borderRadius: "10px", cursor: "pointer", fontWeight: 600 }}>Cancel</button>
+                <button type="submit" disabled={isCheckoutLoading} className="glow-button" style={{ flex: 1, background: "var(--brand-yellow)", color: "var(--brand-purple-dark)", border: "none", padding: "12px", borderRadius: "10px", cursor: isCheckoutLoading ? "not-allowed" : "pointer", fontWeight: 800, opacity: isCheckoutLoading ? 0.7 : 1 }}>
+                  {isCheckoutLoading ? "Processing..." : "Submit Order Details"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Login Advice Modal for guests */}
       {showLoginModal && !session?.user && (
         <div

@@ -2,6 +2,9 @@ from mcp import ClientSession
 from mcp.client.streamable_http import streamablehttp_client
 from langchain_core.tools import tool
 from app.core.config.settings import settings
+from typing import List, Optional
+from pydantic import BaseModel, Field, field_validator
+import datetime
 
 
 class KaprukaMCPClient:
@@ -122,12 +125,22 @@ async def check_delivery(city: str, delivery_date: str = None, product_id: str =
 
     Args:
         city: The name of the city to check delivery for.
-        delivery_date: Optional delivery date.
+        delivery_date: Optional delivery date. MUST be in YYYY-MM-DD format and be a future date.
         product_id: Optional product ID to check availability for.
 
     Returns:
         JSON-compatible delivery availability details from `kapruka_check_delivery`.
     """
+    if delivery_date:
+        import datetime
+        try:
+            parsed = datetime.datetime.strptime(delivery_date, "%Y-%m-%d").date()
+        except ValueError:
+            return {"error": f"delivery_date MUST be strictly in YYYY-MM-DD format. You provided: {delivery_date}. Please reformat it."}
+        today = datetime.datetime.now().date()
+        if parsed <= today:
+            return {"error": f"delivery_date MUST be a future date. Today is {today.strftime('%Y-%m-%d')}."}
+
     result = await client.call(
         "kapruka_check_delivery",
         {
@@ -139,15 +152,51 @@ async def check_delivery(city: str, delivery_date: str = None, product_id: str =
     )
     return result
 
+class CartItem(BaseModel):
+    product_id: str = Field(..., description="The ID of the product")
+    quantity: int = Field(default=1, description="Quantity of the product")
+
+class RecipientInfo(BaseModel):
+    name: str = Field(..., description="Name of the recipient")
+    phone: str = Field(..., description="Contact number for delivery")
+
+class DeliveryInfo(BaseModel):
+    address: str = Field(..., description="Delivery address")
+    city: str = Field(..., description="City for delivery (must be validated)")
+    date: str = Field(..., description="Delivery date in YYYY-MM-DD format (must be a future date)")
+
+    @field_validator("date")
+    def validate_future_date(cls, v):
+        try:
+            parsed_date = datetime.datetime.strptime(v, "%Y-%m-%d").date()
+        except ValueError:
+            raise ValueError(f"Date must be in YYYY-MM-DD format. Got: {v}")
+        
+        today = datetime.datetime.now().date()
+        if parsed_date <= today:
+            raise ValueError(f"Delivery date must be a future date. Today is {today.strftime('%Y-%m-%d')}.")
+        return v
+
+class SenderInfo(BaseModel):
+    name: str = Field(default="Guest", description="Name of the sender")
+    anonymous: bool = Field(default=False, description="Whether the sender is anonymous")
+
 @tool
-async def create_order(cart: list, recipient: dict, delivery: dict, sender: dict, gift_message: str = None, currency: str = None) -> dict:
+async def create_order(
+    cart: List[CartItem], 
+    recipient: RecipientInfo, 
+    delivery: DeliveryInfo, 
+    sender: SenderInfo, 
+    gift_message: Optional[str] = None, 
+    currency: Optional[str] = None
+) -> dict:
     """Create a guest checkout order.
 
     Args:
-        cart: A list of items to order (e.g. [{"product_id": "...", "quantity": 1}]).
-        recipient: Recipient details (e.g. {"name": "...", "phone": "..."}).
-        delivery: Delivery details (e.g. {"address": "...", "city": "...", "date": "..."}).
-        sender: Sender details (e.g. {"name": "...", "anonymous": False}).
+        cart: A list of items to order.
+        recipient: Recipient details (name and phone).
+        delivery: Delivery details (address, city, and YYYY-MM-DD date).
+        sender: Sender details.
         gift_message: Optional gift message.
         currency: Optional currency code.
 
@@ -157,10 +206,10 @@ async def create_order(cart: list, recipient: dict, delivery: dict, sender: dict
     result = await client.call(
         "kapruka_create_order",
         {
-            "cart": cart,
-            "recipient": recipient,
-            "delivery": delivery,
-            "sender": sender,
+            "cart": [item.dict() for item in cart],
+            "recipient": recipient.dict(),
+            "delivery": delivery.dict(),
+            "sender": sender.dict(),
             "gift_message": gift_message,
             "currency": currency,
             "response_format": "json"

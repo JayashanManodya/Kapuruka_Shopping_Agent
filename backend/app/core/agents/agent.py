@@ -5,6 +5,7 @@ from langgraph.graph.message import add_messages
 from langgraph.prebuilt import create_react_agent
 from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 from langchain_openai import ChatOpenAI
+from langchain_groq import ChatGroq
 import json
 import os
 import sys
@@ -32,6 +33,7 @@ from app.core.config.prompts import (
 
 # Instantiate the LLM model
 llm = ChatOpenAI(model=settings.llm_model, openai_api_key=settings.openai_api_key)
+# llm = ChatGroq(model="llama-3.3-70b-versatile", temperature=0, api_key=settings.groq_api_key)
 
 # SQLite path for persistent chat memory
 DB_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))), "kapruka_agent.db")
@@ -60,11 +62,21 @@ class AgentState(TypedDict):
     next_node: str
     active_worker: str
 
+def trim_messages_for_llm(messages: Sequence[BaseMessage], max_msgs: int = 40) -> list[BaseMessage]:
+    """Keep only the last N messages to save tokens. Ensures we start at a HumanMessage."""
+    if len(messages) <= max_msgs:
+        return list(messages)
+    trimmed = list(messages)[-max_msgs:]
+    # Drop orphaned AI/Tool messages at the boundary so we always start with a user message
+    while trimmed and trimmed[0].type in ("tool", "ai"):
+        trimmed.pop(0)
+    return trimmed
+
 async def supervisor_node(state: AgentState) -> dict:
     # Ask the LLM which agent to route to
-    messages = state["messages"]
+    messages = trim_messages_for_llm(state["messages"])
     
-    prompt = [SystemMessage(content=SUPERVISOR_PROMPT)] + list(messages)
+    prompt = [SystemMessage(content=SUPERVISOR_PROMPT)] + messages
     response = await llm.ainvoke(prompt)
     
     route = response.content.strip()
@@ -76,15 +88,18 @@ async def supervisor_node(state: AgentState) -> dict:
     return {"active_worker": route}
 
 async def call_search_agent(state: AgentState) -> dict:
-    response = await search_agent_node.ainvoke({"messages": state["messages"]})
+    msgs = trim_messages_for_llm(state["messages"])
+    response = await search_agent_node.ainvoke({"messages": msgs})
     return {"messages": response["messages"]}
 
 async def call_checkout_agent(state: AgentState) -> dict:
-    response = await checkout_agent_node.ainvoke({"messages": state["messages"]})
+    msgs = trim_messages_for_llm(state["messages"])
+    response = await checkout_agent_node.ainvoke({"messages": msgs})
     return {"messages": response["messages"]}
 
 async def call_tracking_agent(state: AgentState) -> dict:
-    response = await tracking_agent_node.ainvoke({"messages": state["messages"]})
+    msgs = trim_messages_for_llm(state["messages"])
+    response = await tracking_agent_node.ainvoke({"messages": msgs})
     return {"messages": response["messages"]}
 
 async def verification_node(state: AgentState) -> dict:

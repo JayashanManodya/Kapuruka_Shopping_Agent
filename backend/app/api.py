@@ -99,6 +99,9 @@ async def chat(request: ChatRequest, session: AsyncSession = Depends(get_session
         return {"response": latest_reply, "history": history_list}
 
     except Exception as e:
+        import traceback
+        with open("C:/Users/ASUS/.gemini/antigravity-ide/brain/91f9b98e-13d6-4575-9fe1-2c64a65bf8f0/scratch/error.log", "w") as f:
+            f.write(traceback.format_exc())
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -257,6 +260,111 @@ async def clear_cart(user_email: str, session: AsyncSession = Depends(get_sessio
     await session.commit()
     return {"status": "cleared"}
 
+# ─────────────────────────────────────────
+# Direct API Checkout (Bypassing LLM)
+# ─────────────────────────────────────────
+class CheckoutDeliveryInfo(BaseModel):
+    address: str
+    city: str
+    date: str
+
+class CheckoutRequest(BaseModel):
+    name: str
+    phone: str
+    gift_message: str | None = None
+    delivery: CheckoutDeliveryInfo
+    cart: list[AddCartItemRequest]
+    thread_id: str
+
+@app.post("/api/checkout")
+async def process_checkout(request: CheckoutRequest):
+    from app.core.agents.tools import client
+    
+    # 1. Verify city delivery
+    try:
+        delivery_res = await client.call("kapruka_check_delivery", {
+            "city": request.delivery.city,
+            "response_format": "json"
+        })
+        
+        # Parse MCP CallToolResult safely
+        delivery_text = delivery_res.content[0].text if delivery_res.content else ""
+        try:
+            delivery_data = json.loads(delivery_text)
+        except Exception:
+            raise HTTPException(status_code=400, detail=f"Delivery check failed: {delivery_text}")
+        
+        if not delivery_data.get("available"):
+            raise HTTPException(status_code=400, detail=f"Delivery is not available for {request.delivery.city}. Error: {delivery_data.get('error', '')}")
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to verify delivery: {str(e)}")
+
+    # 2. Format cart items
+    cart_payload = [{"product_id": c.product_id, "quantity": 1} for c in request.cart]
+
+    # 3. Create Order
+    try:
+        order_res = await client.call("kapruka_create_order", {
+            "cart": cart_payload,
+            "recipient": {
+                "name": request.name,
+                "phone": request.phone
+            },
+            "delivery": {
+                "address": request.delivery.address,
+                "city": request.delivery.city,
+                "date": request.delivery.date
+            },
+            "sender": {
+                "name": "Guest",
+                "anonymous": True
+            },
+            "gift_message": request.gift_message,
+            "response_format": "json"
+        })
+        
+        # Parse MCP CallToolResult safely
+        order_text = order_res.content[0].text if order_res.content else ""
+        try:
+            order_data = json.loads(order_text)
+        except Exception:
+            raise HTTPException(status_code=400, detail=f"Order creation failed: {order_text}")
+        
+        if "error" in order_data:
+            raise HTTPException(status_code=400, detail=f"Order creation error: {order_data['error']}")
+            
+        if not order_data or "checkout_url" not in order_data:
+            raise HTTPException(status_code=500, detail="Order creation failed. Missing checkout_url.")
+            
+        checkout_url = order_data["checkout_url"]
+        order_ref = order_data.get("order_ref", "UNKNOWN")
+        
+        # Persist to chat history
+        from app.core.agents.agent import workflow, DB_PATH
+        from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
+        
+        msg_content = f"Your order has been created successfully! 🎉\n\nOrder Ref: {order_ref}\nCheckout URL: {checkout_url}"
+        config = {"configurable": {"thread_id": request.thread_id}}
+        
+        try:
+            async with AsyncSqliteSaver.from_conn_string(DB_PATH) as checkpointer:
+                agent = workflow.compile(checkpointer=checkpointer)
+                await agent.aupdate_state(config, {"messages": [{"role": "assistant", "content": msg_content}]})
+        except Exception as e:
+            print(f"Failed to persist checkout message: {e}")
+            
+        return {
+            "checkout_url": checkout_url,
+            "order_ref": order_ref
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to create order: {str(e)}")
 
 if __name__ == "__main__":
     import uvicorn

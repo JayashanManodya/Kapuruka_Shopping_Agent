@@ -1,0 +1,1 @@
+SERVER_URL = "https://mcp.kapruka.com/mcp"
