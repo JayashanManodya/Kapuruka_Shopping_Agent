@@ -273,7 +273,7 @@ export default function Home() {
   const fetchChats = async () => {
     if (!session?.user?.email) return;
     setIsSidebarLoading(true);
-    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || "https://kapuruka-shopping-agent-backend.vercel.app";
     try {
       const res = await fetch(`${apiBaseUrl}/api/chats/${session.user.email}`);
       const data = await res.json();
@@ -290,7 +290,7 @@ export default function Home() {
   const fetchCart = async () => {
     if (!session?.user?.email) return;
     setIsCartLoading(true);
-    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || "https://kapuruka-shopping-agent-backend.vercel.app";
     try {
       const res = await fetch(`${apiBaseUrl}/api/cart/${session.user.email}`);
       const data = await res.json();
@@ -311,7 +311,7 @@ export default function Home() {
       setShowLoginModal(true);
       return;
     }
-    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || "https://kapuruka-shopping-agent-backend.vercel.app";
     try {
       await fetch(`${apiBaseUrl}/api/cart/${session.user.email}/add`, {
         method: "POST",
@@ -332,7 +332,7 @@ export default function Home() {
 
   const removeFromCart = async (productId: string) => {
     if (!session?.user?.email) return;
-    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || "https://kapuruka-shopping-agent-backend.vercel.app";
     try {
       await fetch(`${apiBaseUrl}/api/cart/${session.user.email}/remove/${productId}`, { method: "POST" });
       fetchCart();
@@ -352,7 +352,7 @@ export default function Home() {
   const submitCheckoutForm = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsCheckoutLoading(true);
-    
+
     const checkoutPayload = {
       name: checkoutForm.name,
       phone: checkoutForm.phone,
@@ -366,7 +366,7 @@ export default function Home() {
       thread_id: threadId
     };
 
-    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || "https://kapuruka-shopping-agent-backend.vercel.app";
 
     try {
       const res = await fetch(`${apiBaseUrl}/api/checkout`, {
@@ -374,9 +374,9 @@ export default function Home() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(checkoutPayload)
       });
-      
+
       const data = await res.json();
-      
+
       if (!res.ok) {
         alert(data.detail || "Failed to process checkout. Please try again.");
       } else {
@@ -400,8 +400,8 @@ export default function Home() {
 
   const handlePaymentSuccess = async () => {
     setShowPostPaymentDialog(false);
-    
-    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
+    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || "https://kapuruka-shopping-agent-backend.vercel.app";
 
     // Clear cart in backend if user is logged in
     if (session?.user?.email) {
@@ -411,10 +411,10 @@ export default function Home() {
         console.error("Failed to clear cart in backend:", e);
       }
     }
-    
+
     // Clear local cart state
     setCartItems([]);
-    
+
     const msgContent = `Thank you for confirming! I have cleared your cart for you. You can track your order status anytime using your Order Reference: **${currentOrderRef || "See Above"}**`;
 
     // Persist to chat database
@@ -427,7 +427,7 @@ export default function Home() {
     } catch (e) {
       console.error("Failed to persist system message:", e);
     }
-    
+
     // Inject success agent message locally for instant UI update
     const syntheticMsg: Message = {
       role: "assistant",
@@ -438,7 +438,7 @@ export default function Home() {
 
   const handlePaymentPending = () => {
     setShowPostPaymentDialog(false);
-    
+
     // Show a popup alert instead of injecting an agent message
     alert("No worries! You can click 'Proceed to Checkout' on the Order Confirmation Card whenever you are ready to complete your payment.");
   };
@@ -447,7 +447,7 @@ export default function Home() {
     setThreadId(id);
     setIsSidebarOpen(false);
     setIsLoading(true);
-    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || "https://kapuruka-shopping-agent-backend.vercel.app";
     try {
       const res = await fetch(`${apiBaseUrl}/api/chat/${id}`);
       const data = await res.json();
@@ -504,7 +504,7 @@ export default function Home() {
     setInputText("");
     setIsLoading(true);
 
-    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || "https://kapuruka-shopping-agent-backend.vercel.app";
 
     try {
       const response = await fetch(`${apiBaseUrl}/api/chat`, {
@@ -1192,8 +1192,8 @@ export default function Home() {
               <button onClick={() => { setPaymentUrl(null); setShowPostPaymentDialog(true); }} style={{ background: "transparent", border: "none", color: "#fff", cursor: "pointer", fontSize: "1.5rem" }}>&times;</button>
             </div>
             <div style={{ flex: 1, position: "relative" }}>
-              <iframe 
-                src={paymentUrl} 
+              <iframe
+                src={paymentUrl}
                 style={{ width: "100%", height: "100%", border: "none" }}
                 title="Kapruka Secure Checkout"
               />
@@ -1232,13 +1232,13 @@ export default function Home() {
             <p style={{ color: "var(--text-muted)", fontSize: "0.95rem", lineHeight: 1.6, textAlign: "center", margin: 0 }}>
               Did you complete your Kapruka checkout payment successfully?
             </p>
-            
+
             <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginTop: "12px" }}>
               <button
                 onClick={handlePaymentSuccess}
                 className="glow-button"
                 style={{
-                  width: "100%", background: "var(--brand-yellow)", color: "var(--brand-purple-dark)", 
+                  width: "100%", background: "var(--brand-yellow)", color: "var(--brand-purple-dark)",
                   padding: "14px", borderRadius: "10px", fontWeight: 800, border: "none", cursor: "pointer"
                 }}
               >
@@ -1247,7 +1247,7 @@ export default function Home() {
               <button
                 onClick={handlePaymentPending}
                 style={{
-                  width: "100%", background: "transparent", color: "#fff", 
+                  width: "100%", background: "transparent", color: "#fff",
                   padding: "12px", borderRadius: "10px", fontWeight: 600, border: "1px solid rgba(255,255,255,0.15)", cursor: "pointer"
                 }}
               >
@@ -1289,29 +1289,29 @@ export default function Home() {
             <form onSubmit={submitCheckoutForm} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
               <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                 <label style={{ fontSize: "0.85rem", color: "var(--text-muted)", fontWeight: 600 }}>Recipient Name *</label>
-                <input required type="text" value={checkoutForm.name} onChange={e => setCheckoutForm({...checkoutForm, name: e.target.value})} style={{ background: "rgba(34, 19, 69, 0.6)", border: "1px solid var(--glass-border)", borderRadius: "10px", padding: "12px", color: "#fff", outline: "none" }} />
+                <input required type="text" value={checkoutForm.name} onChange={e => setCheckoutForm({ ...checkoutForm, name: e.target.value })} style={{ background: "rgba(34, 19, 69, 0.6)", border: "1px solid var(--glass-border)", borderRadius: "10px", padding: "12px", color: "#fff", outline: "none" }} />
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                 <label style={{ fontSize: "0.85rem", color: "var(--text-muted)", fontWeight: 600 }}>Delivery Address *</label>
-                <input required type="text" value={checkoutForm.address} onChange={e => setCheckoutForm({...checkoutForm, address: e.target.value})} style={{ background: "rgba(34, 19, 69, 0.6)", border: "1px solid var(--glass-border)", borderRadius: "10px", padding: "12px", color: "#fff", outline: "none" }} />
+                <input required type="text" value={checkoutForm.address} onChange={e => setCheckoutForm({ ...checkoutForm, address: e.target.value })} style={{ background: "rgba(34, 19, 69, 0.6)", border: "1px solid var(--glass-border)", borderRadius: "10px", padding: "12px", color: "#fff", outline: "none" }} />
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                 <label style={{ fontSize: "0.85rem", color: "var(--text-muted)", fontWeight: 600 }}>City *</label>
-                <input required type="text" value={checkoutForm.city} onChange={e => setCheckoutForm({...checkoutForm, city: e.target.value})} style={{ background: "rgba(34, 19, 69, 0.6)", border: "1px solid var(--glass-border)", borderRadius: "10px", padding: "12px", color: "#fff", outline: "none" }} />
+                <input required type="text" value={checkoutForm.city} onChange={e => setCheckoutForm({ ...checkoutForm, city: e.target.value })} style={{ background: "rgba(34, 19, 69, 0.6)", border: "1px solid var(--glass-border)", borderRadius: "10px", padding: "12px", color: "#fff", outline: "none" }} />
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                 <label style={{ fontSize: "0.85rem", color: "var(--text-muted)", fontWeight: 600 }}>Delivery Date (YYYY-MM-DD) *</label>
-                <input required type="date" value={checkoutForm.date} onChange={e => setCheckoutForm({...checkoutForm, date: e.target.value})} style={{ background: "rgba(34, 19, 69, 0.6)", border: "1px solid var(--glass-border)", borderRadius: "10px", padding: "12px", color: "#fff", outline: "none" }} />
+                <input required type="date" value={checkoutForm.date} onChange={e => setCheckoutForm({ ...checkoutForm, date: e.target.value })} style={{ background: "rgba(34, 19, 69, 0.6)", border: "1px solid var(--glass-border)", borderRadius: "10px", padding: "12px", color: "#fff", outline: "none" }} />
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                 <label style={{ fontSize: "0.85rem", color: "var(--text-muted)", fontWeight: 600 }}>Contact Number *</label>
-                <input required type="text" value={checkoutForm.phone} onChange={e => setCheckoutForm({...checkoutForm, phone: e.target.value})} style={{ background: "rgba(34, 19, 69, 0.6)", border: "1px solid var(--glass-border)", borderRadius: "10px", padding: "12px", color: "#fff", outline: "none" }} />
+                <input required type="text" value={checkoutForm.phone} onChange={e => setCheckoutForm({ ...checkoutForm, phone: e.target.value })} style={{ background: "rgba(34, 19, 69, 0.6)", border: "1px solid var(--glass-border)", borderRadius: "10px", padding: "12px", color: "#fff", outline: "none" }} />
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                 <label style={{ fontSize: "0.85rem", color: "var(--text-muted)", fontWeight: 600 }}>Gift Message (Optional)</label>
-                <textarea value={checkoutForm.giftMessage} onChange={e => setCheckoutForm({...checkoutForm, giftMessage: e.target.value})} rows={3} style={{ background: "rgba(34, 19, 69, 0.6)", border: "1px solid var(--glass-border)", borderRadius: "10px", padding: "12px", color: "#fff", outline: "none", resize: "none" }} />
+                <textarea value={checkoutForm.giftMessage} onChange={e => setCheckoutForm({ ...checkoutForm, giftMessage: e.target.value })} rows={3} style={{ background: "rgba(34, 19, 69, 0.6)", border: "1px solid var(--glass-border)", borderRadius: "10px", padding: "12px", color: "#fff", outline: "none", resize: "none" }} />
               </div>
-              
+
               <div style={{ display: "flex", gap: "12px", marginTop: "10px" }}>
                 <button type="button" onClick={() => setShowCheckoutModal(false)} style={{ flex: 1, background: "transparent", border: "1px solid rgba(255,255,255,0.15)", color: "var(--text-muted)", padding: "12px", borderRadius: "10px", cursor: "pointer", fontWeight: 600 }}>Cancel</button>
                 <button type="submit" disabled={isCheckoutLoading} className="glow-button" style={{ flex: 1, background: "var(--brand-yellow)", color: "var(--brand-purple-dark)", border: "none", padding: "12px", borderRadius: "10px", cursor: isCheckoutLoading ? "not-allowed" : "pointer", fontWeight: 800, opacity: isCheckoutLoading ? 0.7 : 1 }}>

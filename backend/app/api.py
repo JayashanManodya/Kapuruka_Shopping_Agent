@@ -6,9 +6,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 import json
 from datetime import datetime, timezone
 
-from app.core.agents.agent import workflow, DB_PATH, serialize_messages
+from app.core.agents.agent import workflow, DB_PATH, serialize_messages, get_checkpointer
 from app.core.db.database import create_db_and_tables, get_session, User, UserOrder, ChatThread, CartItem
-from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 
 app = FastAPI(title="Kapruka Shopping Agent API")
 
@@ -63,7 +62,7 @@ class AddCartItemRequest(BaseModel):
 async def chat(request: ChatRequest, session: AsyncSession = Depends(get_session)):
     config = {"configurable": {"thread_id": request.thread_id}}
     try:
-        async with AsyncSqliteSaver.from_conn_string(DB_PATH) as checkpointer:
+        async with get_checkpointer() as checkpointer:
             agent = workflow.compile(checkpointer=checkpointer)
             response = await agent.ainvoke(
                 {"messages": [{"role": "user", "content": request.message}]},
@@ -132,7 +131,7 @@ async def get_chats(user_email: str, session: AsyncSession = Depends(get_session
 async def get_chat_history(thread_id: str):
     config = {"configurable": {"thread_id": thread_id}}
     try:
-        async with AsyncSqliteSaver.from_conn_string(DB_PATH) as checkpointer:
+        async with get_checkpointer() as checkpointer:
             # We don't invoke the agent here, we just read from the checkpointer
             state = await checkpointer.aget(config)
             
@@ -288,12 +287,11 @@ class SystemMessageRequest(BaseModel):
 async def inject_system_message(thread_id: str, request: SystemMessageRequest):
     """Directly inject an Assistant message into the chat history without invoking the LLM."""
     try:
-        from app.core.agents.agent import workflow, DB_PATH
-        from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
+        from app.core.agents.agent import workflow
         from langchain_core.messages import AIMessage
         
         config = {"configurable": {"thread_id": thread_id}}
-        async with AsyncSqliteSaver.from_conn_string(DB_PATH) as checkpointer:
+        async with get_checkpointer() as checkpointer:
             agent = workflow.compile(checkpointer=checkpointer)
             await agent.aupdate_state(config, {"messages": [{"role": "assistant", "content": request.content}]})
             
@@ -368,14 +366,13 @@ async def process_checkout(request: CheckoutRequest):
         order_ref = order_data.get("order_ref", "UNKNOWN")
         
         # Persist to chat history
-        from app.core.agents.agent import workflow, DB_PATH
-        from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
+        from app.core.agents.agent import workflow
         
         msg_content = f"Your order has been created successfully! 🎉\n\nOrder Ref: {order_ref}\nCheckout URL: {checkout_url}"
         config = {"configurable": {"thread_id": request.thread_id}}
         
         try:
-            async with AsyncSqliteSaver.from_conn_string(DB_PATH) as checkpointer:
+            async with get_checkpointer() as checkpointer:
                 agent = workflow.compile(checkpointer=checkpointer)
                 await agent.aupdate_state(config, {"messages": [{"role": "assistant", "content": msg_content}]})
         except Exception as e:

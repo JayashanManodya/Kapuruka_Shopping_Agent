@@ -81,6 +81,8 @@ Behavior rules:
 
 CRITICAL RULES:
 - DO NOT invent tracking statuses.
+- If the tool fails (e.g., due to a rate limit) or returns an error, DO NOT give a generic "unable to provide specific details" response. Instead, explicitly tell the user that the system hit a temporary rate limit and ask them to try again in a minute.
+- ALWAYS use LKR (Sri Lankan Rupees) as the currency if mentioning money.
 - DO NOT use em dashes (—) in any response. Use a plain hyphen (-) or a comma instead.
 """
 

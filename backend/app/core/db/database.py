@@ -1,11 +1,24 @@
 from sqlmodel import Field, SQLModel, create_engine, Session, select
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
-from typing import Optional
 import os
+from typing import Optional
+from dotenv import load_dotenv
 
-DATABASE_URL = "sqlite+aiosqlite:///./kapruka_agent.db"
-SYNC_DATABASE_URL = "sqlite:///./kapruka_agent.db"
+load_dotenv()
+
+env_db_url = os.environ.get("DATABASE_URL")
+env_sync_db_url = os.environ.get("SYNC_DATABASE_URL")
+
+if env_db_url and env_sync_db_url:
+    DATABASE_URL = env_db_url
+    SYNC_DATABASE_URL = env_sync_db_url
+elif os.environ.get("VERCEL"):
+    DATABASE_URL = "sqlite+aiosqlite:////tmp/kapruka_agent.db"
+    SYNC_DATABASE_URL = "sqlite:////tmp/kapruka_agent.db"
+else:
+    DATABASE_URL = "sqlite+aiosqlite:///./kapruka_agent.db"
+    SYNC_DATABASE_URL = "sqlite:///./kapruka_agent.db"
 
 # Async engine for async endpoints
 async_engine = create_async_engine(DATABASE_URL, echo=False)

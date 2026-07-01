@@ -36,7 +36,10 @@ llm = ChatOpenAI(model=settings.llm_model, openai_api_key=settings.openai_api_ke
 # llm = ChatGroq(model="llama-3.3-70b-versatile", temperature=0, api_key=settings.groq_api_key)
 
 # SQLite path for persistent chat memory
-DB_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))), "kapruka_agent.db")
+if os.environ.get("VERCEL"):
+    DB_PATH = "/tmp/kapruka_agent.db"
+else:
+    DB_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))), "kapruka_agent.db")
 
 # Create Worker Agents using create_react_agent
 search_agent_node = create_react_agent(
@@ -174,11 +177,25 @@ workflow.add_edge("Tracking", "Verification")
 
 workflow.add_conditional_edges("Verification", route_from_verification)
 
-# shopping_agent is built dynamically with persistent SQLite memory
-# Use get_shopping_agent() context manager in the API to get a live instance
+from contextlib import asynccontextmanager
+
+@asynccontextmanager
+async def get_checkpointer():
+    if os.environ.get("DATABASE_URL"):
+        from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+        async with AsyncPostgresSaver.from_conn_string(os.environ.get("DATABASE_URL")) as checkpointer:
+            # LangGraph postgres saver requires setup
+            await checkpointer.setup()
+            yield checkpointer
+    else:
+        from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
+        async with AsyncSqliteSaver.from_conn_string(DB_PATH) as checkpointer:
+            yield checkpointer
+
+# shopping_agent is built dynamically with persistent memory
 async def build_shopping_agent():
-    """Build the shopping agent with AsyncSqliteSaver for persistent memory."""
-    async with AsyncSqliteSaver.from_conn_string(DB_PATH) as checkpointer:
+    """Build the shopping agent with persistent memory."""
+    async with get_checkpointer() as checkpointer:
         agent = workflow.compile(checkpointer=checkpointer)
         return agent, checkpointer
 
