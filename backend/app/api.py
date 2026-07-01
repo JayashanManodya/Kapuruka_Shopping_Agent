@@ -24,6 +24,11 @@ app.add_middleware(
 def on_startup():
     create_db_and_tables()
 
+@app.get("/health")
+def health_check():
+    """Simple health check endpoint."""
+    return {"status": "healthy", "timestamp": datetime.now(timezone.utc).isoformat()}
+
 
 # ─────────────────────────────────────────
 # Pydantic schemas
