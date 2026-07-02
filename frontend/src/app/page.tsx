@@ -221,7 +221,7 @@ const renderFormattedText = (text: string) => {
   const parts = text.split(/\*\*(.*?)\*\*/g);
   return parts.map((part, index) => {
     if (index % 2 === 1) {
-      return <strong key={index} style={{ fontWeight: 800, color: "#fff" }}>{part}</strong>;
+      return <strong key={index} style={{ fontWeight: 800, color: "inherit" }}>{part}</strong>;
     }
     return <span key={index}>{part}</span>;
   });
@@ -323,6 +323,7 @@ export default function Home() {
   const [paymentUrl, setPaymentUrl] = useState<string | null>(null);
   const [showPostPaymentDialog, setShowPostPaymentDialog] = useState(false);
   const [currentOrderRef, setCurrentOrderRef] = useState<string | null>(null);
+  const [loadingMoreIds, setLoadingMoreIds] = useState<Record<number, boolean>>({});
 
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -624,6 +625,56 @@ export default function Home() {
     }
   };
 
+  const handleLoadMore = async (msgIndex: number) => {
+    setLoadingMoreIds(prev => ({ ...prev, [msgIndex]: true }));
+    try {
+      const historyUpToMessage = messages.slice(0, msgIndex + 1).map(m => ({
+        role: m.role,
+        content: m.content,
+        tool_calls: m.tool_calls,
+        name: m.name,
+        tool_call_id: m.tool_call_id
+      }));
+      
+      historyUpToMessage.push({ 
+        role: "user", 
+        content: "Please provide up to 10 MORE different products for my previous request. DO NOT repeat any of the products you just listed." 
+      });
+
+      const response = await fetch("http://127.0.0.1:8000/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: historyUpToMessage,
+          user_email: null,
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error("Server error: " + response.status);
+      }
+
+      const data = await response.json();
+      if (data.history && data.history.length > 0) {
+        const lastMsg = data.history[data.history.length - 1];
+        if (lastMsg && lastMsg.role === "assistant" && lastMsg.content) {
+          setMessages(prev => {
+            const newMsgs = [...prev];
+            newMsgs[msgIndex] = {
+              ...newMsgs[msgIndex],
+              content: newMsgs[msgIndex].content + "\n\n" + lastMsg.content
+            };
+            return newMsgs;
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Failed to load more products:", error);
+    } finally {
+      setLoadingMoreIds(prev => ({ ...prev, [msgIndex]: false }));
+    }
+  };
+
   const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
       handleSendMessage(inputText);
@@ -635,7 +686,7 @@ export default function Home() {
     <div style={{ height: "100vh", display: "flex", flexDirection: "column" }}>
 
       {/* Top Branded Header */}
-      <header className="glass-panel header-container">
+      <header className="header-container">
         <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
           <KaprukaLogo />
         </div>
@@ -645,8 +696,9 @@ export default function Home() {
             style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: "50%", padding: "8px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", width: "42px", height: "42px", color: "#fff" }}
             aria-label="Reset Chat"
           >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21.5 2v6h-6M2.13 15.57a10 10 0 1 0 3.43-11.44L21.5 8" />
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="1 4 1 10 7 10"></polyline>
+              <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
             </svg>
           </button>
           <button
@@ -750,7 +802,7 @@ export default function Home() {
 
           {messages.length === 0 ? (
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", padding: "40px 20px" }}>
-              <h1 style={{ color: "#fff", fontSize: "1.8rem", fontWeight: 600, marginBottom: "40px", textAlign: "center" }}>
+              <h1 style={{ color: "var(--brand-purple-dark)", fontSize: "1.8rem", fontWeight: 600, marginBottom: "40px", textAlign: "center" }}>
                 Hey there! Ready to dive into Kapruka?
               </h1>
               <div style={{ width: "100%", maxWidth: "800px" }}>
@@ -830,9 +882,9 @@ export default function Home() {
                           onClick={() => handleSendMessage(chip.msg)}
                           style={{
                             display: "flex", alignItems: "center", gap: "8px",
-                            background: "rgba(255,255,255,0.06)",
-                            border: "1px solid rgba(255,255,255,0.14)",
-                            color: "#fff", padding: "9px 16px", borderRadius: "24px",
+                            background: "#ffffff",
+                            border: "1px solid var(--glass-border)",
+                            color: "#333", padding: "9px 16px", borderRadius: "24px",
                             fontSize: "0.85rem", fontWeight: 500, cursor: "pointer",
                             transition: "all 0.18s ease",
                           }}
@@ -841,8 +893,8 @@ export default function Home() {
                             e.currentTarget.style.borderColor = "rgba(255,210,0,0.4)";
                           }}
                           onMouseLeave={e => {
-                            e.currentTarget.style.background = "rgba(255,255,255,0.06)";
-                            e.currentTarget.style.borderColor = "rgba(255,255,255,0.14)";
+                            e.currentTarget.style.background = "#ffffff";
+                            e.currentTarget.style.borderColor = "var(--glass-border)";
                           }}
                         >
                           <span>{chip.icon}</span>
@@ -856,14 +908,11 @@ export default function Home() {
             </div>
           ) : (
             <>
-              {/* Active Chat Header */}
-          <div style={{ padding: "16px 24px", borderBottom: "1px solid var(--glass-border)", display: "flex", alignItems: "center", gap: "12px", background: "rgba(34, 19, 69, 0.3)" }}>
-            <div style={{ width: "10px", height: "10px", borderRadius: "50%", background: "#10b981", boxShadow: "0 0 8px #10b981" }}></div>
-            <span style={{ fontWeight: 600, color: "#fff" }}>Kapruka Shopping Assistant</span>
-          </div>
+
 
           {/* Messages Feed Container */}
-          <div style={{ flex: 1, overflowY: "auto", padding: "24px", display: "flex", flexDirection: "column", gap: "20px" }}>
+          <div style={{ flex: 1, overflowY: "auto", padding: "24px", display: "flex", flexDirection: "column", alignItems: "center" }}>
+            <div style={{ width: "100%", maxWidth: "800px", display: "flex", flexDirection: "column", gap: "20px" }}>
 
             {/* Quick-action chips removed from here because they moved to the empty state screen */}
 
@@ -940,12 +989,11 @@ export default function Home() {
                           fontSize: "0.95rem",
                           lineHeight: 1.5,
                           whiteSpace: "pre-wrap",
-                          border: "1px solid rgba(255, 255, 255, 0.1)"
+                          border: "none"
                         }}
                       >
                         {renderFormattedText(msg.content)}
                       </div>
-                      <div style={{ width: 36, height: 36, borderRadius: "50%", background: "#4b328a", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.9rem", color: "#fff", fontWeight: "600", flexShrink: 0 }}>U</div>
                     </div>
                   );
                 }
@@ -961,7 +1009,7 @@ export default function Home() {
                     className="animate-fade-in"
                     style={{
                       alignSelf: "flex-start",
-                      maxWidth: "85%",
+                      maxWidth: "100%",
                       display: "flex",
                       flexDirection: "row",
                       alignItems: "flex-end",
@@ -970,7 +1018,7 @@ export default function Home() {
                     }}
                   >
                     <img src="/agent_photo.png" alt="Kapruka Agent" style={{ width: 36, height: 36, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }} />
-                    <div style={{ display: "flex", flexDirection: "column", gap: "8px", flex: 1 }}>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "8px", flex: 1, minWidth: 0 }}>
 
                       {/* Render clean text response if there is any remaining content */}
                       {cleanedContent && (
@@ -978,10 +1026,10 @@ export default function Home() {
                           <div
                             className="glass-panel"
                             style={{
-                              background: "rgba(34, 19, 69, 0.4)",
+                              background: "#ffffff",
                               padding: "14px 18px",
                               borderRadius: "16px 16px 16px 4px",
-                              color: "#fff",
+                              color: "#333",
                               fontSize: "0.95rem",
                               lineHeight: 1.5,
                               whiteSpace: "pre-wrap",
@@ -1149,45 +1197,121 @@ export default function Home() {
                               );
                             })()
                           ) : (
-                            // Grid layout for multiple products
-                            <div className="product-grid" style={{ maxWidth: "100%" }}>
-                              {extractedIds.map((id, optIdx) => {
-                                const item = cache[id];
-                                return (
-                                  <div key={item.id} className="glass-panel animate-fade-in" style={{ padding: "12px", display: "flex", flexDirection: "column", justifyContent: "space-between", gap: "10px", borderRadius: "14px" }}>
-                                    {item.image && (
-                                      <img
-                                        src={item.image}
-                                        alt={item.name}
-                                        style={{ width: "100%", height: "130px", objectFit: "contain", borderRadius: "10px", background: "#fff" }}
-                                      />
-                                    )}
-                                    <div>
-                                      <h3 style={{ fontSize: "0.9rem", fontWeight: 700, color: "#fff", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", height: "36px" }}>
-                                        {item.name}
-                                      </h3>
-                                      <div style={{ fontSize: "0.72rem", color: "var(--text-muted)", marginTop: "4px", fontFamily: "monospace" }}>
-                                        ID: {item.id}
-                                      </div>
-                                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "8px" }}>
-                                        <span style={{ color: "var(--brand-yellow)", fontWeight: 800, fontSize: "0.92rem" }}>
-                                          {item.price ? `${item.price.toLocaleString()} LKR` : "Price N/A"}
-                                        </span>
-                                        <span style={{ fontSize: "0.68rem", color: item.inStock ? "#10b981" : "#ef4444", background: item.inStock ? "rgba(16, 185, 129, 0.12)" : "rgba(239, 68, 68, 0.12)", padding: "2px 6px", borderRadius: "4px" }}>
-                                          {item.inStock ? "In Stock" : "Out of"}
-                                        </span>
-                                      </div>
-                                    </div>
+                            // Horizontal layout for multiple products
+                            <div style={{ 
+                                marginTop: "16px", 
+                                width: "100vw",
+                                position: "relative",
+                                left: "50%",
+                                right: "50%",
+                                marginLeft: "-50vw",
+                                marginRight: "-50vw"
+                              }}>
+                              {/* Header */}
+                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px", paddingLeft: "max(70px, calc(50vw - 400px + 46px))", paddingRight: "max(24px, calc(50vw - 400px + 24px))" }}>
+                                <div style={{ fontSize: "0.8rem", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "1px", fontWeight: 700 }}>
+                                  {extractedIds.length} PRODUCTS
+                                </div>
+                                <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                                  <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", fontFamily: "monospace", background: "rgba(255,255,255,0.05)", padding: "4px 8px", borderRadius: "6px" }}>Shift + scroll</span>
+                                  <div style={{ display: "flex", gap: "8px" }}>
                                     <button
-                                      onClick={() => handleSendMessage(`Please retrieve details for product ${item.id}`)}
-                                      className="glow-button"
-                                      style={{ width: "100%", background: "var(--brand-yellow)", color: "var(--brand-purple-dark)", border: "none", padding: "8px", borderRadius: "8px", fontWeight: 700, fontSize: "0.8rem", cursor: "pointer" }}
+                                      onClick={() => document.getElementById(`carousel-${index}`)?.scrollBy({ left: -260, behavior: "smooth" })}
+                                      className="scroll-arrow-btn"
+                                      style={{ position: "relative", top: "auto", transform: "none", width: "32px", height: "32px" }}
                                     >
-                                      View Details
+                                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                                    </button>
+                                    <button
+                                      onClick={() => document.getElementById(`carousel-${index}`)?.scrollBy({ left: 260, behavior: "smooth" })}
+                                      className="scroll-arrow-btn"
+                                      style={{ position: "relative", top: "auto", transform: "none", width: "32px", height: "32px" }}
+                                    >
+                                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
                                     </button>
                                   </div>
-                                );
-                              })}
+                                </div>
+                              </div>
+                              
+                              <div id={`carousel-${index}`} className="product-carousel" style={{ paddingLeft: "max(70px, calc(50vw - 400px + 46px))", paddingRight: "max(24px, calc(50vw - 400px + 24px))", boxSizing: "border-box" }}>
+                                {extractedIds.map((id, optIdx) => {
+                                  const item = cache[id];
+                                  return (
+                                    <div key={item.id} className="product-card-light animate-fade-in">
+                                      {item.image && (
+                                        <img
+                                          src={item.image}
+                                          alt={item.name}
+                                          style={{ width: "100%", height: "160px", objectFit: "contain", background: "#fff", marginBottom: "12px" }}
+                                        />
+                                      )}
+                                      <div>
+                                        <h3 style={{ fontSize: "0.95rem", fontWeight: 700, color: "#221345", height: "38px", display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "8px" }}>
+                                          <span style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{item.name}</span>
+                                          {item.url && (
+                                            <a href={item.url} target="_blank" rel="noopener noreferrer" style={{ color: "var(--text-muted)", flexShrink: 0 }}>
+                                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+                                            </a>
+                                          )}
+                                        </h3>
+                                        <div style={{ color: "#111827", fontWeight: 800, fontSize: "1.05rem", marginTop: "12px", marginBottom: "16px" }}>
+                                          {item.price ? `${item.price.toLocaleString()} LKR` : "Price N/A"}
+                                        </div>
+                                      </div>
+                                      
+                                      <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+                                        <button
+                                          onClick={() => handleSendMessage(`Please retrieve details for product ${item.id}`)}
+                                          style={{ flex: 1, background: "rgba(57, 32, 97, 0.08)", color: "var(--brand-purple)", border: "none", padding: "8px 16px", borderRadius: "20px", fontWeight: 600, fontSize: "0.85rem", cursor: "pointer", display: "flex", justifyContent: "center", alignItems: "center", gap: "4px", transition: "all 0.2s" }}
+                                          onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(57, 32, 97, 0.15)"; }}
+                                          onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(57, 32, 97, 0.08)"; }}
+                                        >
+                                          Details <span style={{ fontSize: "0.7rem", marginTop: "2px" }}>❯</span>
+                                        </button>
+                                        <button
+                                          onClick={() => addToCart(item)}
+                                          style={{ background: "var(--brand-yellow)", color: "var(--brand-purple-dark)", border: "none", width: "36px", height: "36px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0, fontWeight: 700, fontSize: "1.2rem", transition: "all 0.2s", boxShadow: "0 2px 6px rgba(255,210,0,0.3)" }}
+                                          onMouseEnter={(e) => { e.currentTarget.style.transform = "scale(1.05)"; }}
+                                          onMouseLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
+                                          title="Add to Cart"
+                                        >
+                                          +
+                                        </button>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                              <div style={{ display: "flex", justifyContent: "center", marginTop: "12px" }}>
+                                <button
+                                  onClick={() => handleLoadMore(index)}
+                                  disabled={loadingMoreIds[index]}
+                                  style={{
+                                    background: "#ffffff",
+                                    border: "1px solid var(--brand-purple)",
+                                    color: "var(--brand-purple)",
+                                    fontWeight: 600,
+                                    padding: "8px 20px",
+                                    borderRadius: "20px",
+                                    fontSize: "0.85rem",
+                                    cursor: loadingMoreIds[index] ? "wait" : "pointer",
+                                    transition: "all 0.2s",
+                                    opacity: loadingMoreIds[index] ? 0.7 : 1
+                                  }}
+                                  onMouseEnter={(e) => { if (!loadingMoreIds[index]) e.currentTarget.style.background = "rgba(57, 32, 97, 0.05)"; }}
+                                  onMouseLeave={(e) => { if (!loadingMoreIds[index]) e.currentTarget.style.background = "#ffffff"; }}
+                                >
+                                  {loadingMoreIds[index] ? (
+                                    <span style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                                      <div className="typing-dot" style={{ width: "6px", height: "6px" }}></div>
+                                      <div className="typing-dot" style={{ width: "6px", height: "6px" }}></div>
+                                      <div className="typing-dot" style={{ width: "6px", height: "6px" }}></div>
+                                    </span>
+                                  ) : (
+                                    "Load more products"
+                                  )}
+                                </button>
+                              </div>
                             </div>
                           )}
                         </div>
@@ -1210,6 +1334,7 @@ export default function Home() {
             )}
 
             <div ref={messagesEndRef} />
+            </div>
           </div>
 
           {/* Interactive Chat Input Bar */}
@@ -1284,8 +1409,8 @@ export default function Home() {
       </main>
 
       {/* Footer */}
-      <footer style={{ textAlign: "center", padding: "10px 24px", color: "var(--text-muted)", fontSize: "0.78rem", borderTop: "1px solid var(--glass-border)", background: "rgba(20, 10, 45, 0.4)" }}>
-        &copy; {new Date().getFullYear()} Developed by <a href="https://www.jayashan.online/" target="_blank" rel="noopener noreferrer" style={{ color: "var(--brand-yellow)", fontWeight: 700, textDecoration: "none" }}>Jayashan Manodya</a>. All rights reserved.
+      <footer style={{ textAlign: "center", padding: "10px 24px", color: "var(--text-muted)", fontSize: "0.78rem", borderTop: "1px solid var(--glass-border)", background: "#f9fafb" }}>
+        &copy; {new Date().getFullYear()} Developed by <a href="https://www.jayashan.online/" target="_blank" rel="noopener noreferrer" style={{ color: "var(--brand-purple)", fontWeight: 700, textDecoration: "none" }}>Jayashan Manodya</a>. All rights reserved.
       </footer>
       {/* Payment Iframe Modal */}
       {paymentUrl && (
