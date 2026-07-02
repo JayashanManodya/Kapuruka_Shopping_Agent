@@ -107,6 +107,16 @@ async def chat(request: ChatRequest, session: AsyncSession = Depends(get_session
                 chat_thread.updated_at = now_iso
             await session.commit()
 
+            # Auto-trim to max 10 chats per user
+            all_chats_result = await session.execute(
+                select(ChatThread).where(ChatThread.user_email == request.user_email).order_by(ChatThread.updated_at.desc())
+            )
+            all_chats = all_chats_result.scalars().all()
+            if len(all_chats) > 10:
+                for old_chat in all_chats[10:]:
+                    await session.delete(old_chat)
+                await session.commit()
+
         return {"response": latest_reply, "history": history_list}
 
     except Exception as e:
@@ -126,9 +136,41 @@ async def get_chats(user_email: str, session: AsyncSession = Depends(get_session
         select(ChatThread)
         .where(ChatThread.user_email == user_email)
         .order_by(ChatThread.updated_at.desc())
+        .limit(10)
     )
     threads = result.scalars().all()
     return {"chats": [t.model_dump() for t in threads]}
+
+# ─────────────────────────────────────────
+# Rename a specific thread
+# ─────────────────────────────────────────
+class RenameChatRequest(BaseModel):
+    title: str
+
+@app.post("/api/chat/{thread_id}/rename")
+async def rename_chat(thread_id: str, request: RenameChatRequest, session: AsyncSession = Depends(get_session)):
+    result = await session.execute(select(ChatThread).where(ChatThread.thread_id == thread_id))
+    chat_thread = result.scalar_one_or_none()
+    if not chat_thread:
+        raise HTTPException(status_code=404, detail="Chat not found")
+    
+    chat_thread.title = request.title
+    await session.commit()
+    return {"status": "renamed"}
+
+# ─────────────────────────────────────────
+# Delete a specific thread
+# ─────────────────────────────────────────
+@app.delete("/api/chat/{thread_id}")
+async def delete_chat(thread_id: str, session: AsyncSession = Depends(get_session)):
+    result = await session.execute(select(ChatThread).where(ChatThread.thread_id == thread_id))
+    chat_thread = result.scalar_one_or_none()
+    if not chat_thread:
+        raise HTTPException(status_code=404, detail="Chat not found")
+        
+    await session.delete(chat_thread)
+    await session.commit()
+    return {"status": "deleted"}
 
 
 # ─────────────────────────────────────────

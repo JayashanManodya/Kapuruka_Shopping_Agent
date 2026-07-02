@@ -335,6 +335,47 @@ export default function Home() {
 
   const [chatHistory, setChatHistory] = useState<ChatThread[]>([]);
   const [isSidebarLoading, setIsSidebarLoading] = useState(false);
+  const [activeChatMenu, setActiveChatMenu] = useState<string | null>(null);
+
+  const handleRenameChat = async (id: string, currentTitle: string) => {
+    const newTitle = prompt("Enter new title for the chat:", currentTitle);
+    if (!newTitle || newTitle === currentTitle) {
+      setActiveChatMenu(null);
+      return;
+    }
+    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || "https://kapuruka-shopping-agent-backend.vercel.app";
+    try {
+      await fetch(`${apiBaseUrl}/api/chat/${id}/rename`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: newTitle })
+      });
+      fetchChats();
+    } catch (e) {
+      console.error("Failed to rename chat", e);
+    }
+    setActiveChatMenu(null);
+  };
+
+  const handleDeleteChat = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this chat?")) {
+      setActiveChatMenu(null);
+      return;
+    }
+    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || "https://kapuruka-shopping-agent-backend.vercel.app";
+    try {
+      await fetch(`${apiBaseUrl}/api/chat/${id}`, {
+        method: "DELETE"
+      });
+      if (threadId === id) {
+        startNewChat();
+      }
+      fetchChats();
+    } catch (e) {
+      console.error("Failed to delete chat", e);
+    }
+    setActiveChatMenu(null);
+  };
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -794,28 +835,95 @@ export default function Home() {
                 <div style={{ padding: "12px 8px", color: "var(--text-muted)", fontSize: "0.85rem" }}>Loading chats...</div>
               ) : chatHistory.length > 0 ? (
                 chatHistory.map((chat) => (
-                  <button
-                    key={chat.thread_id}
-                    onClick={() => loadChat(chat.thread_id)}
-                    style={{
-                      background: threadId === chat.thread_id ? "rgba(255,255,255,0.1)" : "transparent",
-                      border: "none",
-                      padding: "12px",
-                      borderRadius: "8px",
-                      textAlign: "left",
-                      cursor: "pointer",
-                      color: "#fff",
-                      fontSize: "0.9rem",
-                      whiteSpace: "nowrap",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      transition: "background 0.2s"
-                    }}
-                    onMouseEnter={(e) => { if (threadId !== chat.thread_id) e.currentTarget.style.background = "rgba(255,255,255,0.05)" }}
-                    onMouseLeave={(e) => { if (threadId !== chat.thread_id) e.currentTarget.style.background = "transparent" }}
-                  >
-                    {chat.title}
-                  </button>
+                  <div key={chat.thread_id} style={{ display: "flex", alignItems: "center", position: "relative" }}>
+                    <button
+                      onClick={() => loadChat(chat.thread_id)}
+                      style={{
+                        flex: 1,
+                        background: threadId === chat.thread_id ? "rgba(255,255,255,0.1)" : "transparent",
+                        border: "none",
+                        padding: "12px",
+                        borderRadius: "8px",
+                        textAlign: "left",
+                        cursor: "pointer",
+                        color: "#fff",
+                        fontSize: "0.9rem",
+                        whiteSpace: "nowrap",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        transition: "background 0.2s"
+                      }}
+                      onMouseEnter={(e) => { if (threadId !== chat.thread_id) e.currentTarget.style.background = "rgba(255,255,255,0.05)" }}
+                      onMouseLeave={(e) => { if (threadId !== chat.thread_id) e.currentTarget.style.background = "transparent" }}
+                    >
+                      {chat.title}
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActiveChatMenu(activeChatMenu === chat.thread_id ? null : chat.thread_id);
+                      }}
+                      style={{
+                        background: "transparent",
+                        border: "none",
+                        color: "var(--text-muted)",
+                        padding: "8px",
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        borderRadius: "50%",
+                        width: "30px",
+                        height: "30px"
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = "rgba(255,255,255,0.1)"}
+                      onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
+                    >
+                      ⋮
+                    </button>
+                    {activeChatMenu === chat.thread_id && (
+                      <div
+                        style={{
+                          position: "absolute",
+                          right: "30px",
+                          top: "50%",
+                          transform: "translateY(-50%)",
+                          background: "rgba(20, 10, 45, 0.95)",
+                          border: "1px solid var(--glass-border)",
+                          borderRadius: "8px",
+                          padding: "4px",
+                          display: "flex",
+                          flexDirection: "column",
+                          zIndex: 10,
+                          minWidth: "100px",
+                          boxShadow: "0 4px 12px rgba(0,0,0,0.5)"
+                        }}
+                      >
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleRenameChat(chat.thread_id, chat.title); }}
+                          style={{
+                            background: "transparent", border: "none", color: "#fff", padding: "8px",
+                            textAlign: "left", cursor: "pointer", fontSize: "0.85rem", borderRadius: "4px"
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.background = "rgba(255,255,255,0.1)"}
+                          onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
+                        >
+                          Rename
+                        </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleDeleteChat(chat.thread_id); }}
+                          style={{
+                            background: "transparent", border: "none", color: "#ef4444", padding: "8px",
+                            textAlign: "left", cursor: "pointer", fontSize: "0.85rem", borderRadius: "4px"
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.background = "rgba(239, 68, 68, 0.1)"}
+                          onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 ))
               ) : (
                 <div style={{ padding: "12px 8px", color: "var(--text-muted)", fontSize: "0.85rem" }}>No previous chats.</div>
