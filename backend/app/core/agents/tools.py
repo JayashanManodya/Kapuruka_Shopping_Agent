@@ -7,15 +7,96 @@ from pydantic import BaseModel, Field, field_validator
 import datetime
 
 @tool
-async def check_cart(user_email: str) -> dict:
-    """Return the items currently in the user's shopping cart."""
+async def manage_cart(
+    user_email: str, 
+    action: str, 
+    product_id: Optional[str] = None, 
+    product_name: Optional[str] = None, 
+    price: Optional[float] = None, 
+    image: Optional[str] = None, 
+    quantity: int = 1
+) -> dict:
+    """Manage the user's shopping cart.
+    
+    Actions:
+    - 'view': Returns the current cart items.
+    - 'add': Adds a product to the cart. Requires product_id, product_name, price.
+    - 'update': Updates the quantity of a product in the cart. Requires product_id, quantity.
+    - 'remove': Removes a product from the cart. Requires product_id.
+    - 'clear': Empties the cart.
+    """
     from app.core.db.database import AsyncSessionLocal, CartItem
     from sqlmodel import select
     
     async with AsyncSessionLocal() as session:
-        result = await session.execute(select(CartItem).where(CartItem.user_email == user_email))
-        items = result.scalars().all()
-        return {"cart": [i.model_dump() for i in items]}
+        if action == "view":
+            result = await session.execute(select(CartItem).where(CartItem.user_email == user_email))
+            items = result.scalars().all()
+            return {"cart": [i.model_dump() for i in items]}
+            
+        elif action == "add":
+            if not product_id or not product_name:
+                return {"error": "product_id and product_name are required for 'add' action"}
+            result = await session.execute(
+                select(CartItem).where(CartItem.user_email == user_email, CartItem.product_id == product_id)
+            )
+            existing = result.scalar_one_or_none()
+            if existing:
+                existing.quantity += quantity
+            else:
+                new_item = CartItem(
+                    user_email=user_email,
+                    product_id=product_id,
+                    product_name=product_name,
+                    price=price,
+                    image=image,
+                    quantity=quantity
+                )
+                session.add(new_item)
+            await session.commit()
+            return {"status": f"Added {quantity} of {product_name} to cart"}
+            
+        elif action == "update":
+            if not product_id:
+                return {"error": "product_id is required for 'update' action"}
+            result = await session.execute(
+                select(CartItem).where(CartItem.user_email == user_email, CartItem.product_id == product_id)
+            )
+            existing = result.scalar_one_or_none()
+            if existing:
+                if quantity <= 0:
+                    await session.delete(existing)
+                    await session.commit()
+                    return {"status": "Item removed from cart because quantity was 0"}
+                else:
+                    existing.quantity = quantity
+                    await session.commit()
+                    return {"status": f"Quantity of {existing.product_name} updated to {quantity}"}
+            return {"error": "Product not found in cart"}
+            
+        elif action == "remove":
+            if not product_id:
+                return {"error": "product_id is required for 'remove' action"}
+            result = await session.execute(
+                select(CartItem).where(CartItem.user_email == user_email, CartItem.product_id == product_id)
+            )
+            existing = result.scalar_one_or_none()
+            if existing:
+                await session.delete(existing)
+                await session.commit()
+                return {"status": "Item removed from cart"}
+            return {"error": "Product not found in cart"}
+            
+        elif action == "clear":
+            result = await session.execute(select(CartItem).where(CartItem.user_email == user_email))
+            items = result.scalars().all()
+            for item in items:
+                await session.delete(item)
+            await session.commit()
+            return {"status": "Cart cleared"}
+            
+        else:
+            return {"error": "Invalid action"}
 
 class KaprukaMCPClient:
     async def call(self, tool_name: str, params: dict):

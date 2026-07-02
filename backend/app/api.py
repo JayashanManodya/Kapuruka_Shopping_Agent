@@ -246,12 +246,15 @@ async def add_to_cart(user_email: str, request: AddCartItemRequest, session: Asy
     await session.commit()
     return {"status": "added"}
 
-@app.post("/api/cart/{user_email}/remove/{product_id}")
-async def remove_from_cart(user_email: str, product_id: str, session: AsyncSession = Depends(get_session)):
+class RemoveCartItemRequest(BaseModel):
+    product_id: str
+
+@app.post("/api/cart/{user_email}/remove")
+async def remove_from_cart(user_email: str, request: RemoveCartItemRequest, session: AsyncSession = Depends(get_session)):
     result = await session.execute(
         select(CartItem).where(
             CartItem.user_email == user_email,
-            CartItem.product_id == product_id
+            CartItem.product_id == request.product_id
         )
     )
     existing = result.scalar_one_or_none()
@@ -259,6 +262,27 @@ async def remove_from_cart(user_email: str, product_id: str, session: AsyncSessi
         await session.delete(existing)
         await session.commit()
     return {"status": "removed"}
+
+class UpdateCartQuantityRequest(BaseModel):
+    product_id: str
+    quantity: int
+
+@app.post("/api/cart/{user_email}/update")
+async def update_cart_quantity(user_email: str, request: UpdateCartQuantityRequest, session: AsyncSession = Depends(get_session)):
+    result = await session.execute(
+        select(CartItem).where(
+            CartItem.user_email == user_email,
+            CartItem.product_id == request.product_id
+        )
+    )
+    existing = result.scalar_one_or_none()
+    if existing:
+        if request.quantity <= 0:
+            await session.delete(existing)
+        else:
+            existing.quantity = request.quantity
+        await session.commit()
+    return {"status": "updated"}
 
 @app.post("/api/cart/{user_email}/clear")
 async def clear_cart(user_email: str, session: AsyncSession = Depends(get_session)):

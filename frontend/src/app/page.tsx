@@ -275,7 +275,7 @@ export default function Home() {
     setIsSidebarLoading(true);
     const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || "https://kapuruka-shopping-agent-backend.vercel.app";
     try {
-      const res = await fetch(`${apiBaseUrl}/api/chats/${session.user.email}`);
+      const res = await fetch(`${apiBaseUrl}/api/chats/${session.user.email}`, { cache: "no-store" });
       const data = await res.json();
       if (data.chats) {
         setChatHistory(data.chats);
@@ -292,7 +292,7 @@ export default function Home() {
     setIsCartLoading(true);
     const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || "https://kapuruka-shopping-agent-backend.vercel.app";
     try {
-      const res = await fetch(`${apiBaseUrl}/api/cart/${session.user.email}`);
+      const res = await fetch(`${apiBaseUrl}/api/cart/${session.user.email}`, { cache: "no-store" });
       const data = await res.json();
       if (data.cart) {
         setCartItems(data.cart);
@@ -313,7 +313,7 @@ export default function Home() {
     }
     const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || "https://kapuruka-shopping-agent-backend.vercel.app";
     try {
-      await fetch(`${apiBaseUrl}/api/cart/${session.user.email}/add`, {
+      await fetch(`${apiBaseUrl}/api/cart/${encodeURIComponent(session.user.email)}/add`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -334,10 +334,29 @@ export default function Home() {
     if (!session?.user?.email) return;
     const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || "https://kapuruka-shopping-agent-backend.vercel.app";
     try {
-      await fetch(`${apiBaseUrl}/api/cart/${session.user.email}/remove/${productId}`, { method: "POST" });
+      await fetch(`${apiBaseUrl}/api/cart/${encodeURIComponent(session.user.email)}/remove`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ product_id: productId })
+      });
       fetchCart();
     } catch (e) {
       console.error("Failed to remove from cart", e);
+    }
+  };
+
+  const updateCartQuantity = async (productId: string, quantity: number) => {
+    if (!session?.user?.email) return;
+    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || "https://kapuruka-shopping-agent-backend.vercel.app";
+    try {
+      await fetch(`${apiBaseUrl}/api/cart/${encodeURIComponent(session.user.email)}/update`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ product_id: productId, quantity })
+      });
+      fetchCart();
+    } catch (e) {
+      console.error("Failed to update cart quantity", e);
     }
   };
 
@@ -545,6 +564,7 @@ export default function Home() {
       // Refresh sidebar if logged in
       if (session?.user?.email) {
         fetchChats();
+        fetchCart(); // Ensure the cart is always up to date if the agent modifies it
       }
     } catch (error: any) {
       console.error(error);
@@ -643,12 +663,19 @@ export default function Home() {
                     <div style={{ width: 60, height: 60, background: "rgba(255,255,255,0.1)", borderRadius: "8px" }} />
                   )}
                   <div style={{ flex: 1 }}>
-                    <div style={{ color: "#fff", fontSize: "0.9rem", fontWeight: "bold" }}>{item.product_name}</div>
-                    <div style={{ color: "var(--brand-yellow)", fontSize: "0.85rem", marginTop: "4px" }}>
-                      {item.price ? `${item.price.toLocaleString()} LKR` : "N/A"} x {item.quantity}
+                    <div style={{ color: "#fff", fontSize: "0.9rem", fontWeight: "bold", marginBottom: "6px" }}>{item.product_name}</div>
+                    <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                      <div style={{ display: "flex", alignItems: "center", background: "rgba(255,255,255,0.1)", borderRadius: "6px" }}>
+                        <button onClick={() => updateCartQuantity(item.product_id, item.quantity - 1)} style={{ background: "transparent", color: "#fff", border: "none", padding: "2px 8px", cursor: "pointer", fontSize: "1rem" }}>-</button>
+                        <span style={{ color: "#fff", fontSize: "0.85rem", minWidth: "20px", textAlign: "center", fontWeight: "bold" }}>{item.quantity}</span>
+                        <button onClick={() => updateCartQuantity(item.product_id, item.quantity + 1)} style={{ background: "transparent", color: "#fff", border: "none", padding: "2px 8px", cursor: "pointer", fontSize: "1rem" }}>+</button>
+                      </div>
+                      <div style={{ color: "var(--brand-yellow)", fontSize: "0.9rem", fontWeight: "bold" }}>
+                        {item.price ? `${(item.price * item.quantity).toLocaleString()} LKR` : "N/A"}
+                      </div>
                     </div>
                   </div>
-                  <button onClick={() => removeFromCart(item.product_id)} style={{ background: "rgba(239, 68, 68, 0.2)", color: "#ef4444", border: "none", borderRadius: "50%", width: 30, height: 30, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <button onClick={() => removeFromCart(item.product_id)} style={{ background: "rgba(239, 68, 68, 0.2)", color: "#ef4444", border: "none", borderRadius: "50%", width: 30, height: 30, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }} title="Remove item">
                     🗑
                   </button>
                 </div>
