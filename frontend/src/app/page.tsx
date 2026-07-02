@@ -343,7 +343,7 @@ export default function Home() {
       setActiveChatMenu(null);
       return;
     }
-    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || "https://kapuruka-shopping-agent-backend.vercel.app";
+    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL as string;
     try {
       await fetch(`${apiBaseUrl}/api/chat/${id}/rename`, {
         method: "POST",
@@ -362,7 +362,7 @@ export default function Home() {
       setActiveChatMenu(null);
       return;
     }
-    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || "https://kapuruka-shopping-agent-backend.vercel.app";
+    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL as string;
     try {
       await fetch(`${apiBaseUrl}/api/chat/${id}`, {
         method: "DELETE"
@@ -453,7 +453,7 @@ export default function Home() {
   const fetchChats = async () => {
     if (!session?.user?.email) return;
     setIsSidebarLoading(true);
-    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || "https://kapuruka-shopping-agent-backend.vercel.app";
+    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL as string;
     try {
       const res = await fetch(`${apiBaseUrl}/api/chats/${session.user.email}`, { cache: "no-store" });
       const data = await res.json();
@@ -470,7 +470,7 @@ export default function Home() {
   const fetchCart = async () => {
     if (!session?.user?.email) return;
     setIsCartLoading(true);
-    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || "https://kapuruka-shopping-agent-backend.vercel.app";
+    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL as string;
     try {
       const res = await fetch(`${apiBaseUrl}/api/cart/${session.user.email}`, { cache: "no-store" });
       const data = await res.json();
@@ -491,7 +491,7 @@ export default function Home() {
       setShowLoginModal(true);
       return;
     }
-    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || "https://kapuruka-shopping-agent-backend.vercel.app";
+    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL as string;
     try {
       await fetch(`${apiBaseUrl}/api/cart/${encodeURIComponent(session.user.email)}/add`, {
         method: "POST",
@@ -512,7 +512,7 @@ export default function Home() {
 
   const removeFromCart = async (productId: string) => {
     if (!session?.user?.email) return;
-    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || "https://kapuruka-shopping-agent-backend.vercel.app";
+    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL as string;
     try {
       await fetch(`${apiBaseUrl}/api/cart/${encodeURIComponent(session.user.email)}/remove`, {
         method: "POST",
@@ -527,7 +527,7 @@ export default function Home() {
 
   const updateCartQuantity = async (productId: string, quantity: number) => {
     if (!session?.user?.email) return;
-    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || "https://kapuruka-shopping-agent-backend.vercel.app";
+    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL as string;
     try {
       await fetch(`${apiBaseUrl}/api/cart/${encodeURIComponent(session.user.email)}/update`, {
         method: "POST",
@@ -565,7 +565,7 @@ export default function Home() {
       thread_id: threadId
     };
 
-    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || "https://kapuruka-shopping-agent-backend.vercel.app";
+    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL as string;
 
     try {
       const res = await fetch(`${apiBaseUrl}/api/checkout`, {
@@ -600,7 +600,7 @@ export default function Home() {
   const handlePaymentSuccess = async () => {
     setShowPostPaymentDialog(false);
 
-    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || "https://kapuruka-shopping-agent-backend.vercel.app";
+    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL as string;
 
     // Clear cart in backend if user is logged in
     if (session?.user?.email) {
@@ -646,7 +646,7 @@ export default function Home() {
     setThreadId(id);
     setIsSidebarOpen(false);
     setIsLoading(true);
-    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || "https://kapuruka-shopping-agent-backend.vercel.app";
+    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL as string;
     try {
       const res = await fetch(`${apiBaseUrl}/api/chat/${id}`);
       const data = await res.json();
@@ -703,7 +703,7 @@ export default function Home() {
     setInputText("");
     setIsLoading(true);
 
-    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || "https://kapuruka-shopping-agent-backend.vercel.app";
+    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL as string;
 
     try {
       const response = await fetch(`${apiBaseUrl}/api/chat`, {

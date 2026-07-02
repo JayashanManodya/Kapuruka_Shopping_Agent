@@ -19,7 +19,7 @@ export default function UserProfile({ onTrackOrder }: UserProfileProps) {
   const [panelOpen, setPanelOpen] = useState(false);
   const [ordersLoaded, setOrdersLoaded] = useState(false);
 
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL as string;
 
   // Fetch orders when panel opens
   useEffect(() => {
