@@ -316,7 +316,6 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
   const [welcomed, setWelcomed] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [cartItems, setCartItems] = useState<any[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isCartLoading, setIsCartLoading] = useState(false);
@@ -333,49 +332,6 @@ export default function Home() {
   const [showPostPaymentDialog, setShowPostPaymentDialog] = useState(false);
   const [currentOrderRef, setCurrentOrderRef] = useState<string | null>(null);
 
-  const [chatHistory, setChatHistory] = useState<ChatThread[]>([]);
-  const [isSidebarLoading, setIsSidebarLoading] = useState(false);
-  const [activeChatMenu, setActiveChatMenu] = useState<string | null>(null);
-
-  const handleRenameChat = async (id: string, currentTitle: string) => {
-    const newTitle = prompt("Enter new title for the chat:", currentTitle);
-    if (!newTitle || newTitle === currentTitle) {
-      setActiveChatMenu(null);
-      return;
-    }
-    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL as string;
-    try {
-      await fetch(`${apiBaseUrl}/api/chat/${id}/rename`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: newTitle })
-      });
-      fetchChats();
-    } catch (e) {
-      console.error("Failed to rename chat", e);
-    }
-    setActiveChatMenu(null);
-  };
-
-  const handleDeleteChat = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this chat?")) {
-      setActiveChatMenu(null);
-      return;
-    }
-    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL as string;
-    try {
-      await fetch(`${apiBaseUrl}/api/chat/${id}`, {
-        method: "DELETE"
-      });
-      if (threadId === id) {
-        startNewChat();
-      }
-      fetchChats();
-    } catch (e) {
-      console.error("Failed to delete chat", e);
-    }
-    setActiveChatMenu(null);
-  };
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -450,22 +406,6 @@ export default function Home() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isLoading]);
 
-  const fetchChats = async () => {
-    if (!session?.user?.email) return;
-    setIsSidebarLoading(true);
-    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL as string;
-    try {
-      const res = await fetch(`${apiBaseUrl}/api/chats/${session.user.email}`, { cache: "no-store" });
-      const data = await res.json();
-      if (data.chats) {
-        setChatHistory(data.chats);
-      }
-    } catch (e) {
-      console.error("Failed to fetch chats", e);
-    } finally {
-      setIsSidebarLoading(false);
-    }
-  };
 
   const fetchCart = async () => {
     if (!session?.user?.email) return;
@@ -644,7 +584,6 @@ export default function Home() {
 
   const loadChat = async (id: string) => {
     setThreadId(id);
-    setIsSidebarOpen(false);
     setIsLoading(true);
     const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL as string;
     try {
@@ -653,7 +592,11 @@ export default function Home() {
       if (data.history && data.history.length > 0) {
         setMessages(data.history);
       } else {
-        setMessages([{ role: "assistant", content: "Ayubowan! Ready to continue our chat." }]);
+        const firstName = session?.user?.name?.split(" ")[0] || "there";
+        setMessages([{
+          role: "assistant", 
+          content: `Ayubowan! 🙏 Welcome back, ${firstName}! Great to see you again. I'm your personal Kapruka Shopping Agent - ready to help you find the perfect gifts, check deliveries, or track your orders. What shall we do today?`
+        }]);
       }
     } catch (e) {
       console.error("Failed to load chat", e);
@@ -662,27 +605,14 @@ export default function Home() {
     }
   };
 
-  const startNewChat = () => {
-    const newId = "session_" + Math.random().toString(36).substring(2, 9);
-    setThreadId(newId);
-    setIsSidebarOpen(false);
-    const firstName = session?.user?.name?.split(" ")[0] || "there";
-    setMessages([
-      {
-        role: "assistant",
-        content: `Ayubowan! 🙏 Welcome back, ${firstName}! Great to see you again. I'm your personal Kapruka Shopping Agent - ready to help you find the perfect gifts, check deliveries, or track your orders. What shall we do today?`
-      }
-    ]);
-  };
-
-  // When user logs in, load chat history and start a new session
+  // When user logs in, load the single chat history for the user
   useEffect(() => {
     if (session?.user?.email) {
       setShowLoginModal(false);
       fetchCart();
       if (!welcomed) {
-        startNewChat();
-        fetchChats();
+        const id = "chat_" + session.user.email;
+        loadChat(id);
         setWelcomed(true);
       }
     } else if (status === "unauthenticated" && !welcomed) {
@@ -741,9 +671,8 @@ export default function Home() {
         }
       }
 
-      // Refresh sidebar if logged in
+      // Refresh cart if logged in
       if (session?.user?.email) {
-        fetchChats();
         fetchCart(); // Ensure the cart is always up to date if the agent modifies it
       }
     } catch (error: any) {
@@ -770,15 +699,6 @@ export default function Home() {
       {/* Top Branded Header */}
       <header className="glass-panel header-container">
         <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-          <button
-            className="mobile-menu-btn"
-            onClick={() => setIsSidebarOpen(true)}
-            aria-label="Open Menu"
-          >
-            <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
-          </button>
           <KaprukaLogo />
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
@@ -805,11 +725,6 @@ export default function Home() {
       {/* Main Container */}
       <main className="main-container">
 
-        {/* Mobile Sidebar Overlay */}
-        <div
-          className={`sidebar-overlay ${isSidebarOpen ? 'open' : ''}`}
-          onClick={() => setIsSidebarOpen(false)}
-        />
 
         {/* Cart Slide-out Panel */}
         <div
@@ -883,127 +798,6 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Left Sidebar Chat History */}
-        <section className={`glass-card sidebar ${isSidebarOpen ? 'open' : ''}`}>
-
-          <button
-            onClick={startNewChat}
-            className="glow-button"
-            style={{ width: "100%", background: "var(--brand-yellow)", color: "var(--brand-purple-dark)", border: "none", padding: "12px", borderRadius: "8px", fontWeight: 700, fontSize: "0.9rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}
-          >
-            <span style={{ fontSize: "1.2rem", lineHeight: 1 }}>+</span> New Chat
-          </button>
-
-          <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: "4px", marginTop: "12px" }}>
-            <span style={{ fontSize: "0.75rem", letterSpacing: "1px", color: "var(--text-muted)", fontWeight: 700, textTransform: "uppercase", marginBottom: "8px", paddingLeft: "8px" }}>
-              Recent Chats
-            </span>
-
-            {session?.user ? (
-              isSidebarLoading ? (
-                <div style={{ padding: "12px 8px", color: "var(--text-muted)", fontSize: "0.85rem" }}>Loading chats...</div>
-              ) : chatHistory.length > 0 ? (
-                chatHistory.map((chat) => (
-                  <div key={chat.thread_id} style={{ display: "flex", alignItems: "center", position: "relative" }}>
-                    <button
-                      onClick={() => loadChat(chat.thread_id)}
-                      style={{
-                        flex: 1,
-                        background: threadId === chat.thread_id ? "rgba(255,255,255,0.1)" : "transparent",
-                        border: "none",
-                        padding: "12px",
-                        borderRadius: "8px",
-                        textAlign: "left",
-                        cursor: "pointer",
-                        color: "#fff",
-                        fontSize: "0.9rem",
-                        whiteSpace: "nowrap",
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        transition: "background 0.2s"
-                      }}
-                      onMouseEnter={(e) => { if (threadId !== chat.thread_id) e.currentTarget.style.background = "rgba(255,255,255,0.05)" }}
-                      onMouseLeave={(e) => { if (threadId !== chat.thread_id) e.currentTarget.style.background = "transparent" }}
-                    >
-                      {chat.title}
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setActiveChatMenu(activeChatMenu === chat.thread_id ? null : chat.thread_id);
-                      }}
-                      style={{
-                        background: "transparent",
-                        border: "none",
-                        color: "var(--text-muted)",
-                        padding: "8px",
-                        cursor: "pointer",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        borderRadius: "50%",
-                        width: "30px",
-                        height: "30px"
-                      }}
-                      onMouseEnter={(e) => e.currentTarget.style.background = "rgba(255,255,255,0.1)"}
-                      onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
-                    >
-                      ⋮
-                    </button>
-                    {activeChatMenu === chat.thread_id && (
-                      <div
-                        style={{
-                          position: "absolute",
-                          right: "30px",
-                          top: "50%",
-                          transform: "translateY(-50%)",
-                          background: "rgba(20, 10, 45, 0.95)",
-                          border: "1px solid var(--glass-border)",
-                          borderRadius: "8px",
-                          padding: "4px",
-                          display: "flex",
-                          flexDirection: "column",
-                          zIndex: 10,
-                          minWidth: "100px",
-                          boxShadow: "0 4px 12px rgba(0,0,0,0.5)"
-                        }}
-                      >
-                        <button
-                          onClick={(e) => { e.stopPropagation(); handleRenameChat(chat.thread_id, chat.title); }}
-                          style={{
-                            background: "transparent", border: "none", color: "#fff", padding: "8px",
-                            textAlign: "left", cursor: "pointer", fontSize: "0.85rem", borderRadius: "4px"
-                          }}
-                          onMouseEnter={(e) => e.currentTarget.style.background = "rgba(255,255,255,0.1)"}
-                          onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
-                        >
-                          Rename
-                        </button>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); handleDeleteChat(chat.thread_id); }}
-                          style={{
-                            background: "transparent", border: "none", color: "#ef4444", padding: "8px",
-                            textAlign: "left", cursor: "pointer", fontSize: "0.85rem", borderRadius: "4px"
-                          }}
-                          onMouseEnter={(e) => e.currentTarget.style.background = "rgba(239, 68, 68, 0.1)"}
-                          onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                ))
-              ) : (
-                <div style={{ padding: "12px 8px", color: "var(--text-muted)", fontSize: "0.85rem" }}>No previous chats.</div>
-              )
-            ) : (
-              <div style={{ padding: "12px 8px", color: "var(--text-muted)", fontSize: "0.85rem", lineHeight: 1.5 }}>
-                Log in with Google to save and view your chat history.
-              </div>
-            )}
-          </div>
-        </section>
 
         {/* Right Section Chat Interface */}
         <section className="glass-card chat-section">
