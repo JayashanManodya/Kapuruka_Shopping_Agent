@@ -3,7 +3,7 @@ from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, System
 from langgraph.graph import StateGraph, START, END
 from langgraph.graph.message import add_messages
 from langgraph.prebuilt import create_react_agent
-from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
+
 from langchain_openai import ChatOpenAI
 from langchain_groq import ChatGroq
 import json
@@ -35,11 +35,6 @@ from app.core.config.prompts import (
 llm = ChatOpenAI(model=settings.llm_model, openai_api_key=settings.openai_api_key)
 # llm = ChatGroq(model="llama-3.3-70b-versatile", temperature=0, api_key=settings.groq_api_key)
 
-# SQLite path for persistent chat memory
-if os.environ.get("VERCEL"):
-    DB_PATH = "/tmp/kapruka_agent.db"
-else:
-    DB_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))), "kapruka_agent.db")
 
 # Create Worker Agents using create_react_agent
 search_agent_node = create_react_agent(
@@ -177,32 +172,9 @@ workflow.add_edge("Tracking", "Verification")
 
 workflow.add_conditional_edges("Verification", route_from_verification)
 
-from contextlib import asynccontextmanager
-
-@asynccontextmanager
-async def get_checkpointer():
-    if os.environ.get("DATABASE_URL"):
-        from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
-        async with AsyncPostgresSaver.from_conn_string(os.environ.get("DATABASE_URL")) as checkpointer:
-            # LangGraph postgres saver requires setup
-            await checkpointer.setup()
-            yield checkpointer
-    else:
-        from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
-        async with AsyncSqliteSaver.from_conn_string(DB_PATH) as checkpointer:
-            yield checkpointer
-
-# shopping_agent is built dynamically with persistent memory
-async def build_shopping_agent():
-    """Build the shopping agent with persistent memory."""
-    async with get_checkpointer() as checkpointer:
-        agent = workflow.compile(checkpointer=checkpointer)
-        return agent, checkpointer
-
-# Also expose a simple in-memory version for quick startup validation
-from langgraph.checkpoint.memory import MemorySaver
-_memory_saver = MemorySaver()
-shopping_agent = workflow.compile(checkpointer=_memory_saver)
+# Compile the workflow completely statelessly. 
+# Memory persistence is managed entirely by the frontend via local storage.
+shopping_agent = workflow.compile()
 
 def serialize_messages(messages) -> str:
     """Serialize LangChain core message list to a clean JSON-serializable list of dictionaries."""

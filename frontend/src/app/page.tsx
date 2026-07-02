@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { useSession, signIn } from "next-auth/react";
 import UserProfile from "./components/UserProfile";
 
 // Types
@@ -302,15 +301,8 @@ const SearchableSelect = ({ value, onChange, options, placeholder }: { value: st
 };
 
 export default function Home() {
-  const { data: session, status } = useSession();
-
   // States
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      role: "assistant",
-      content: "Hello! I am your Kapruka Shopping Agent. I can help you find, compare, and inspect the best products in Sri Lanka. Log in with Google to save your chats and orders, or just start chatting!"
-    }
-  ]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState("");
   const [threadId, setThreadId] = useState("session_default");
   const [isLoading, setIsLoading] = useState(false);
@@ -340,7 +332,13 @@ export default function Home() {
   const recognitionRef = useRef<any>(null);
   const initialTextRef = useRef("");
 
-  const startListening = () => {
+  const toggleListening = () => {
+    if (isListening && recognitionRef.current) {
+      recognitionRef.current.stop();
+      setIsListening(false);
+      return;
+    }
+
     if (!("webkitSpeechRecognition" in window) && !("SpeechRecognition" in window)) {
       alert("Voice chat is not supported in this browser. Please use Chrome or Edge.");
       return;
@@ -379,7 +377,12 @@ export default function Home() {
     };
     
     recognition.onerror = (event: any) => {
-      console.error("Speech recognition error", event.error);
+      if (event.error === "aborted") {
+        // Expected when manually stopped or silence timeout stops it
+        setIsListening(false);
+        return;
+      }
+      console.error("Speech recognition error:", event.error);
       setIsListening(false);
     };
     
@@ -407,77 +410,58 @@ export default function Home() {
   }, [messages, isLoading]);
 
 
-  const fetchCart = async () => {
-    if (!session?.user?.email) return;
-    setIsCartLoading(true);
-    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL as string;
-    try {
-      const res = await fetch(`${apiBaseUrl}/api/cart/${session.user.email}`, { cache: "no-store" });
-      const data = await res.json();
-      if (data.cart) {
-        setCartItems(data.cart);
-      }
-    } catch (e) {
-      // Use console.warn instead of console.error to prevent Next.js from showing a dev overlay 
-      // when the backend server is temporarily restarting or offline.
-      console.warn("Failed to fetch cart: Backend might be temporarily unavailable.");
-    } finally {
-      setIsCartLoading(false);
+  // Load state from localStorage on mount
+  useEffect(() => {
+    const savedCart = localStorage.getItem("kapruka_cart");
+    if (savedCart) {
+      try { setCartItems(JSON.parse(savedCart)); } catch (e) {}
     }
+    const savedMessages = localStorage.getItem("kapruka_messages_v2");
+    if (savedMessages) {
+      try { setMessages(JSON.parse(savedMessages)); } catch (e) {}
+    }
+  }, []);
+
+  // Save to localStorage when state changes
+  useEffect(() => {
+    localStorage.setItem("kapruka_cart", JSON.stringify(cartItems));
+  }, [cartItems]);
+
+  useEffect(() => {
+    localStorage.setItem("kapruka_messages_v2", JSON.stringify(messages));
+  }, [messages]);
+
+  const fetchCart = () => {
+    // No-op, cart is now managed entirely in local state
   };
 
-  const addToCart = async (item: any) => {
-    if (!session?.user?.email) {
-      setShowLoginModal(true);
+  const addToCart = (item: any) => {
+    setCartItems(prev => {
+      const existing = prev.find(i => i.product_id === item.id);
+      if (existing) {
+        return prev.map(i => i.product_id === item.id ? { ...i, quantity: i.quantity + 1 } : i);
+      }
+      return [...prev, {
+        product_id: item.id,
+        product_name: item.name,
+        price: item.price || 0,
+        image: item.image || "",
+        quantity: 1
+      }];
+    });
+    setIsCartOpen(true);
+  };
+
+  const removeFromCart = (productId: string) => {
+    setCartItems(prev => prev.filter(i => i.product_id !== productId));
+  };
+
+  const updateCartQuantity = (productId: string, quantity: number) => {
+    if (quantity <= 0) {
+      removeFromCart(productId);
       return;
     }
-    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL as string;
-    try {
-      await fetch(`${apiBaseUrl}/api/cart/${encodeURIComponent(session.user.email)}/add`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          product_id: item.id,
-          product_name: item.name,
-          price: item.price || 0,
-          image: item.image || "",
-        }),
-      });
-      fetchCart(); // Refresh cart to get new quantities
-      setIsCartOpen(true);
-    } catch (e) {
-      console.error("Failed to add to cart", e);
-    }
-  };
-
-  const removeFromCart = async (productId: string) => {
-    if (!session?.user?.email) return;
-    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL as string;
-    try {
-      await fetch(`${apiBaseUrl}/api/cart/${encodeURIComponent(session.user.email)}/remove`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ product_id: productId })
-      });
-      fetchCart();
-    } catch (e) {
-      console.error("Failed to remove from cart", e);
-    }
-  };
-
-  const updateCartQuantity = async (productId: string, quantity: number) => {
-    if (!session?.user?.email) return;
-    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL as string;
-    try {
-      await fetch(`${apiBaseUrl}/api/cart/${encodeURIComponent(session.user.email)}/update`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ product_id: productId, quantity })
-      });
-      fetchCart();
-    } catch (e) {
-      console.error("Failed to update cart quantity", e);
-    }
+    setCartItems(prev => prev.map(i => i.product_id === productId ? { ...i, quantity } : i));
   };
 
   const handleCartCheckout = () => {
@@ -528,6 +512,20 @@ export default function Home() {
         setMessages((prev) => [...prev, syntheticMsg]);
         setCurrentOrderRef(data.order_ref);
         setCheckoutForm({ name: "", address: "", city: "", date: "", phone: "", giftMessage: "" });
+
+        // Save order to localStorage
+        try {
+          const savedOrders = JSON.parse(localStorage.getItem("kapruka_orders") || "[]");
+          savedOrders.unshift({
+            id: Date.now(),
+            order_number: data.order_ref,
+            product_name: cartItems.map(c => c.product_name || c.name).join(", "),
+            created_at: new Date().toISOString()
+          });
+          localStorage.setItem("kapruka_orders", JSON.stringify(savedOrders));
+        } catch (e) {
+          console.error("Failed to save order to localStorage:", e);
+        }
       }
     } catch (e) {
       console.error("Checkout failed:", e);
@@ -540,32 +538,10 @@ export default function Home() {
   const handlePaymentSuccess = async () => {
     setShowPostPaymentDialog(false);
 
-    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL as string;
-
-    // Clear cart in backend if user is logged in
-    if (session?.user?.email) {
-      try {
-        await fetch(`${apiBaseUrl}/api/cart/${session.user.email}/clear`, { method: "POST" });
-      } catch (e) {
-        console.error("Failed to clear cart in backend:", e);
-      }
-    }
-
     // Clear local cart state
     setCartItems([]);
 
     const msgContent = `Thank you for confirming! I have cleared your cart for you. You can track your order status anytime using your Order Reference: **${currentOrderRef || "See Above"}**`;
-
-    // Persist to chat database
-    try {
-      await fetch(`${apiBaseUrl}/api/chat/${threadId}/system_message`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: msgContent })
-      });
-    } catch (e) {
-      console.error("Failed to persist system message:", e);
-    }
 
     // Inject success agent message locally for instant UI update
     const syntheticMsg: Message = {
@@ -582,46 +558,28 @@ export default function Home() {
     alert("No worries! You can click 'Proceed to Checkout' on the Order Confirmation Card whenever you are ready to complete your payment.");
   };
 
-  const loadChat = async (id: string) => {
+  const loadChat = (id: string) => {
     setThreadId(id);
-    setIsLoading(true);
-    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL as string;
-    try {
-      const res = await fetch(`${apiBaseUrl}/api/chat/${id}`);
-      const data = await res.json();
-      if (data.history && data.history.length > 0) {
-        setMessages(data.history);
-      } else {
-        const firstName = session?.user?.name?.split(" ")[0] || "there";
-        setMessages([{
-          role: "assistant", 
-          content: `Ayubowan! 🙏 Welcome back, ${firstName}! Great to see you again. I'm your personal Kapruka Shopping Agent - ready to help you find the perfect gifts, check deliveries, or track your orders. What shall we do today?`
-        }]);
-      }
-    } catch (e) {
-      console.error("Failed to load chat", e);
-    } finally {
-      setIsLoading(false);
+    const savedMessages = localStorage.getItem("kapruka_messages_v2");
+    if (!savedMessages) {
+      setMessages([]);
     }
   };
 
-  // When user logs in, load the single chat history for the user
+  // Load chat on mount
   useEffect(() => {
-    if (session?.user?.email) {
-      setShowLoginModal(false);
-      fetchCart();
-      if (!welcomed) {
-        const id = "chat_" + session.user.email;
-        loadChat(id);
-        setWelcomed(true);
-      }
-    } else if (status === "unauthenticated" && !welcomed) {
-      const randomSession = "session_" + Math.random().toString(36).substring(2, 9);
-      setThreadId(randomSession);
-      // Show login advice modal after a short delay for guests
-      setTimeout(() => setShowLoginModal(true), 1200);
+    fetchCart();
+    if (!welcomed) {
+      const id = "chat_local";
+      loadChat(id);
+      setWelcomed(true);
     }
-  }, [session, status]);
+  }, []);
+
+  const resetChat = () => {
+    setMessages([]);
+    localStorage.removeItem("kapruka_messages_v2");
+  };
 
   // Submit Message handler
   const handleSendMessage = async (text: string) => {
@@ -629,7 +587,8 @@ export default function Home() {
 
     // Add user message
     const userMsg: Message = { role: "user", content: text };
-    setMessages((prev) => [...prev, userMsg]);
+    const updatedMessages = [...messages, userMsg];
+    setMessages(updatedMessages);
     setInputText("");
     setIsLoading(true);
 
@@ -640,9 +599,8 @@ export default function Home() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          message: text,
-          thread_id: threadId,
-          user_email: session?.user?.email ?? null,
+          messages: updatedMessages,
+          user_email: null,
         })
       });
 
@@ -652,28 +610,8 @@ export default function Home() {
 
       const data = await response.json();
       if (data.history && data.history.length > 0) {
-        // Update entire history to capture tool message nodes
+        // Update entire history to capture AI messages and tool execution logs
         setMessages(data.history);
-      } else if (data.response) {
-        setMessages((prev) => [...prev, { role: "assistant", content: data.response }]);
-      }
-
-      // Auto-save order numbers found in the response (checkout flow)
-      if (session?.user?.email && data.response) {
-        const orderMatches = data.response.match(/order[_\s-]?(?:ref|number|#)?[:\s]*([A-Z0-9\-]{6,20})/gi);
-        if (orderMatches) {
-          const orderNum = orderMatches[0].replace(/^.*?([A-Z0-9\-]{6,20})$/i, "$1");
-          await fetch(`${apiBaseUrl}/api/orders/save`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ user_email: session.user.email, order_number: orderNum })
-          }).catch(() => { }); // silent fail
-        }
-      }
-
-      // Refresh cart if logged in
-      if (session?.user?.email) {
-        fetchCart(); // Ensure the cart is always up to date if the agent modifies it
       }
     } catch (error: any) {
       console.error(error);
@@ -702,22 +640,31 @@ export default function Home() {
           <KaprukaLogo />
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
-          {session?.user && (
-            <button
-              onClick={() => setIsCartOpen(true)}
-              style={{ background: "transparent", border: "none", borderRadius: "8px", padding: "8px", cursor: "pointer", display: "flex", gap: "8px", alignItems: "center", position: "relative" }}
-              aria-label="Cart"
-            >
-              <svg width="26" height="26" viewBox="0 0 24 24" fill="var(--brand-yellow)">
-                <path d="M7 18c-1.1 0-1.99.9-1.99 2S5.9 22 7 22s2-.9 2-2-.9-2-2-2zm10 0c-1.1 0-1.99.9-1.99 2s.89 2 1.99 2 2-.9 2-2-.9-2-2-2zm-9.83-3.25l.03-.12.9-1.63h7.45c.75 0 1.41-.41 1.75-1.03l3.58-6.49c.08-.14.12-.31.12-.48 0-.55-.45-1-1-1H5.21l-.94-2H1v2h2l3.6 7.59-1.35 2.44C7.1 15.36 7 15.67 7 16c0 1.1.9 2 2 2h12v-2H9.42c-.14 0-.25-.11-.25-.25z"/>
-              </svg>
-              {cartItems.length > 0 && (
-                <span style={{ position: "absolute", top: "-2px", right: "-6px", background: "#ef4444", color: "#fff", padding: "2px 6px", borderRadius: "12px", fontSize: "0.75rem", fontWeight: "bold" }}>
-                  {cartItems.reduce((acc, i) => acc + i.quantity, 0)}
-                </span>
-              )}
-            </button>
-          )}
+          <button
+            onClick={resetChat}
+            style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: "50%", padding: "8px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", width: "42px", height: "42px", color: "#fff" }}
+            aria-label="Reset Chat"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21.5 2v6h-6M2.13 15.57a10 10 0 1 0 3.43-11.44L21.5 8" />
+            </svg>
+          </button>
+          <button
+            onClick={() => setIsCartOpen(true)}
+            style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: "50%", padding: "8px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", width: "42px", height: "42px", position: "relative" }}
+            aria-label="Cart"
+          >
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
+              <line x1="3" y1="6" x2="21" y2="6" />
+              <path d="M16 10a4 4 0 0 1-8 0" />
+            </svg>
+            {cartItems.length > 0 && (
+              <span style={{ position: "absolute", top: "-4px", right: "-4px", background: "var(--brand-yellow)", color: "var(--brand-purple-dark)", padding: "2px 6px", borderRadius: "12px", fontSize: "0.75rem", fontWeight: "bold" }}>
+                {cartItems.reduce((acc, i) => acc + i.quantity, 0)}
+              </span>
+            )}
+          </button>
           <UserProfile onTrackOrder={(msg) => handleSendMessage(msg)} />
         </div>
       </header>
@@ -799,10 +746,117 @@ export default function Home() {
         </div>
 
 
-        {/* Right Section Chat Interface */}
         <section className="glass-card chat-section">
 
-          {/* Active Chat Header */}
+          {messages.length === 0 ? (
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", padding: "40px 20px" }}>
+              <h1 style={{ color: "#fff", fontSize: "1.8rem", fontWeight: 600, marginBottom: "40px", textAlign: "center" }}>
+                Hey there! Ready to dive into Kapruka?
+              </h1>
+              <div style={{ width: "100%", maxWidth: "800px" }}>
+                <div style={{ display: "flex", gap: "12px", position: "relative", alignItems: "center", background: "#fff", padding: "8px 16px", borderRadius: "30px", width: "100%", boxShadow: "0 4px 20px rgba(0,0,0,0.1)" }}>
+                  <button
+                    style={{
+                      background: "transparent",
+                      border: "none",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      cursor: "pointer",
+                      color: "#666",
+                      padding: "8px",
+                      flexShrink: 0
+                    }}
+                  >
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
+                    </svg>
+                  </button>
+                  <input
+                    type="text"
+                    placeholder="Ask Kapruka Agent..."
+                    value={inputText}
+                    onChange={(e) => setInputText(e.target.value)}
+                    onKeyDown={handleKeyPress}
+                    disabled={isLoading}
+                    style={{
+                      flex: 1,
+                      background: "transparent",
+                      border: "none",
+                      color: "#333",
+                      fontSize: "1rem",
+                      outline: "none",
+                      height: "40px",
+                    }}
+                  />
+                  <button
+                    onClick={toggleListening}
+                    disabled={isLoading}
+                    className="glow-button"
+                    style={{
+                      background: "var(--brand-purple-dark)",
+                      color: "#fff",
+                      border: "none",
+                      borderRadius: "50%",
+                      width: "44px",
+                      height: "44px",
+                      padding: 0,
+                      cursor: isLoading ? "not-allowed" : "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      flexShrink: 0
+                    }}
+                    id="send-msg-btn-empty"
+                  >
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
+                      <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
+                    </svg>
+                  </button>
+                </div>
+                {(() => {
+                  const chips = [
+                    { icon: "🎁", label: "Find a gift for someone special", msg: "I need a gift for my friend. Can you suggest something under 3000 LKR?" },
+                    { icon: "🍫", label: "Search chocolates & sweets", msg: "Show me chocolate boxes available for delivery today." },
+                    { icon: "🌸", label: "Browse flowers & bouquets", msg: "Search for flower bouquets for a birthday." },
+                    { icon: "🚚", label: "Check delivery availability", msg: "Can you deliver to Kandy today?" },
+                  ];
+                  return (
+                    <div className="animate-fade-in" style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "10px", marginTop: "24px" }}>
+                      {chips.map((chip, i) => (
+                        <button
+                          key={i}
+                          onClick={() => handleSendMessage(chip.msg)}
+                          style={{
+                            display: "flex", alignItems: "center", gap: "8px",
+                            background: "rgba(255,255,255,0.06)",
+                            border: "1px solid rgba(255,255,255,0.14)",
+                            color: "#fff", padding: "9px 16px", borderRadius: "24px",
+                            fontSize: "0.85rem", fontWeight: 500, cursor: "pointer",
+                            transition: "all 0.18s ease",
+                          }}
+                          onMouseEnter={e => {
+                            e.currentTarget.style.background = "rgba(255,210,0,0.12)";
+                            e.currentTarget.style.borderColor = "rgba(255,210,0,0.4)";
+                          }}
+                          onMouseLeave={e => {
+                            e.currentTarget.style.background = "rgba(255,255,255,0.06)";
+                            e.currentTarget.style.borderColor = "rgba(255,255,255,0.14)";
+                          }}
+                        >
+                          <span>{chip.icon}</span>
+                          <span>{chip.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  );
+                })()}
+              </div>
+            </div>
+          ) : (
+            <>
+              {/* Active Chat Header */}
           <div style={{ padding: "16px 24px", borderBottom: "1px solid var(--glass-border)", display: "flex", alignItems: "center", gap: "12px", background: "rgba(34, 19, 69, 0.3)" }}>
             <div style={{ width: "10px", height: "10px", borderRadius: "50%", background: "#10b981", boxShadow: "0 0 8px #10b981" }}></div>
             <span style={{ fontWeight: 600, color: "#fff" }}>Kapruka Shopping Assistant</span>
@@ -811,50 +865,7 @@ export default function Home() {
           {/* Messages Feed Container */}
           <div style={{ flex: 1, overflowY: "auto", padding: "24px", display: "flex", flexDirection: "column", gap: "20px" }}>
 
-            {/* Quick-action chips - only shown on welcome screen (1 message, no user input yet) */}
-            {messages.length === 1 && !isLoading && (() => {
-              const chips = session?.user?.name ? [
-                { icon: "🎁", label: "Find a gift for someone special", msg: "I need a gift idea for someone special" },
-                { icon: "🍫", label: "Search chocolates & sweets", msg: "Show me chocolate gift boxes" },
-                { icon: "🌸", label: "Browse flowers & bouquets", msg: "Search for flower bouquets" },
-                { icon: "📦", label: "Track my recent order", msg: "I want to track my recent order" },
-                { icon: "🚚", label: "Check delivery to my city", msg: "Check delivery availability for my city" },
-              ] : [
-                { icon: "🎁", label: "Find a gift idea", msg: "I need a gift idea" },
-                { icon: "🍫", label: "Search chocolates", msg: "Show me chocolate gift boxes" },
-                { icon: "🌸", label: "Browse flowers", msg: "Search for flower bouquets" },
-                { icon: "🎂", label: "Order a birthday cake", msg: "I want to order a birthday cake" },
-              ];
-              return (
-                <div className="animate-fade-in" style={{ display: "flex", flexWrap: "wrap", gap: "10px", marginBottom: "8px" }}>
-                  {chips.map((chip, i) => (
-                    <button
-                      key={i}
-                      onClick={() => handleSendMessage(chip.msg)}
-                      style={{
-                        display: "flex", alignItems: "center", gap: "8px",
-                        background: "rgba(255,255,255,0.06)",
-                        border: "1px solid rgba(255,255,255,0.14)",
-                        color: "#fff", padding: "9px 16px", borderRadius: "24px",
-                        fontSize: "0.85rem", fontWeight: 500, cursor: "pointer",
-                        transition: "all 0.18s ease",
-                      }}
-                      onMouseEnter={e => {
-                        e.currentTarget.style.background = "rgba(255,210,0,0.12)";
-                        e.currentTarget.style.borderColor = "rgba(255,210,0,0.4)";
-                      }}
-                      onMouseLeave={e => {
-                        e.currentTarget.style.background = "rgba(255,255,255,0.06)";
-                        e.currentTarget.style.borderColor = "rgba(255,255,255,0.14)";
-                      }}
-                    >
-                      <span>{chip.icon}</span>
-                      <span>{chip.label}</span>
-                    </button>
-                  ))}
-                </div>
-              );
-            })()}
+            {/* Quick-action chips removed from here because they moved to the empty state screen */}
 
             {(() => {
               // Deduplicate: collapse consecutive assistant messages — keep only the last one
@@ -934,11 +945,7 @@ export default function Home() {
                       >
                         {renderFormattedText(msg.content)}
                       </div>
-                      {session?.user?.image ? (
-                        <img src={session.user.image} alt="User" style={{ width: 36, height: 36, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }} />
-                      ) : (
-                        <div style={{ width: 36, height: 36, borderRadius: "50%", background: "#4b328a", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.9rem", color: "#fff", fontWeight: "600", flexShrink: 0 }}>U</div>
-                      )}
+                      <div style={{ width: 36, height: 36, borderRadius: "50%", background: "#4b328a", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.9rem", color: "#fff", fontWeight: "600", flexShrink: 0 }}>U</div>
                     </div>
                   );
                 }
@@ -1206,88 +1213,71 @@ export default function Home() {
           </div>
 
           {/* Interactive Chat Input Bar */}
-          <div style={{ padding: "20px 24px", borderTop: "1px solid var(--glass-border)", background: "rgba(21, 9, 42, 0.4)" }}>
-            <div style={{ display: "flex", gap: "12px", position: "relative", alignItems: "center" }}>
+          <div style={{ padding: "20px 24px", display: "flex", justifyContent: "center" }}>
+            <div style={{ display: "flex", gap: "12px", position: "relative", alignItems: "center", background: "#fff", padding: "8px 16px", borderRadius: "30px", width: "100%", maxWidth: "800px", boxShadow: "0 4px 20px rgba(0,0,0,0.1)" }}>
               <button
-                onClick={startListening}
-                disabled={isListening || isLoading}
-                title="Voice Input"
                 style={{
-                  background: isListening ? "rgba(239, 68, 68, 0.2)" : "rgba(34, 19, 69, 0.6)",
-                  border: isListening ? "1px solid rgba(239, 68, 68, 0.5)" : "1px solid var(--glass-border)",
-                  borderRadius: "50%",
-                  width: "52px",
-                  height: "52px",
+                  background: "transparent",
+                  border: "none",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  cursor: isLoading ? "not-allowed" : "pointer",
-                  color: isListening ? "#ef4444" : "#e2d9f3",
-                  transition: "all 0.2s",
+                  cursor: "pointer",
+                  color: "#666",
+                  padding: "8px",
                   flexShrink: 0
                 }}
               >
-                {isListening ? (
-                  <svg className="animate-pulse" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
-                    <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
-                  </svg>
-                ) : (
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
-                    <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
-                  </svg>
-                )}
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
+                </svg>
               </button>
               <input
                 type="text"
-                placeholder="Ask for chocolate, gifts, flowers, cakes..."
+                placeholder="Ask Kapruka Agent..."
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
                 onKeyDown={handleKeyPress}
                 disabled={isLoading}
                 style={{
                   flex: 1,
-                  background: "rgba(34, 19, 69, 0.6)",
-                  border: "1px solid var(--glass-border)",
-                  borderRadius: "14px",
-                  padding: "16px 20px",
-                  color: "#fff",
-                  fontSize: "0.95rem",
+                  background: "transparent",
+                  border: "none",
+                  color: "#333",
+                  fontSize: "1rem",
                   outline: "none",
-                  transition: "border-color 0.2s",
-                  boxShadow: "inset 0 2px 4px rgba(0, 0, 0, 0.2)",
-                  height: "52px",
-                  boxSizing: "border-box"
+                  height: "40px",
                 }}
               />
               <button
-                id="send-msg-btn"
-                onClick={() => handleSendMessage(inputText)}
-                disabled={isLoading || !inputText.trim()}
+                onClick={toggleListening}
+                disabled={isLoading}
                 className="glow-button"
                 style={{
-                  background: "var(--brand-yellow)",
-                  color: "var(--brand-purple-dark)",
+                  background: "var(--brand-purple-dark)",
+                  color: "#fff",
                   border: "none",
                   borderRadius: "50%",
-                  width: "52px",
-                  height: "52px",
+                  width: "44px",
+                  height: "44px",
                   padding: 0,
-                  cursor: isLoading || !inputText.trim() ? "not-allowed" : "pointer",
-                  opacity: isLoading || !inputText.trim() ? 0.6 : 1,
+                  cursor: isLoading ? "not-allowed" : "pointer",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
                   flexShrink: 0
                 }}
               >
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" style={{ marginLeft: "4px" }}>
-                  <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
+                  <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
                 </svg>
               </button>
             </div>
           </div>
+
+            </>
+          )}
 
         </section>
 
@@ -1470,93 +1460,7 @@ export default function Home() {
         </div>
       )}
 
-      {/* Login Advice Modal for guests */}
-      {showLoginModal && !session?.user && (
-        <div
-          style={{
-            position: "fixed", inset: 0, zIndex: 1000,
-            background: "rgba(10, 4, 30, 0.75)",
-            backdropFilter: "blur(6px)",
-            display: "flex", alignItems: "center", justifyContent: "center"
-          }}
-          onClick={() => setShowLoginModal(false)}
-        >
-          <div
-            className="glass-card animate-fade-in"
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              padding: "36px 40px",
-              maxWidth: "440px",
-              width: "90%",
-              borderRadius: "20px",
-              display: "flex",
-              flexDirection: "column",
-              gap: "16px",
-              border: "1px solid rgba(255, 210, 0, 0.2)"
-            }}
-          >
-            <div style={{ textAlign: "center" }}><img src="/favicon.png" alt="Kapruka" style={{ width: "56px", height: "56px", margin: "0 auto", display: "block", borderRadius: "12px" }} /></div>
-            <h2 style={{ fontSize: "1.3rem", fontWeight: 800, color: "#fff", textAlign: "center", margin: 0 }}>
-              Get the Full Experience
-            </h2>
-            <p style={{ color: "var(--text-muted)", fontSize: "0.9rem", lineHeight: 1.6, textAlign: "center", margin: 0 }}>
-              Log in with Google to unlock all features:
-            </p>
-            <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: "10px" }}>
-              {[
-                "Save and switch between multiple chats",
-                "Track and manage your orders",
-                "Secure, personalized shopping sessions",
-                "Personalized welcome and recommendations",
-              ].map((text) => (
-                <li key={text} style={{ fontSize: "0.88rem", color: "#e2d9f3", paddingLeft: "4px" }}>
-                  • {text}
-                </li>
-              ))}
-            </ul>
-            <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginTop: "8px", alignItems: "center" }}>
-              <button
-                onClick={() => { setShowLoginModal(false); signIn("google"); }}
-                style={{
-                  width: "100%",
-                  display: "flex", alignItems: "center", justifyContent: "center", gap: "10px",
-                  background: "#fff",
-                  color: "#333",
-                  padding: "12px 20px",
-                  borderRadius: "10px",
-                  fontWeight: 700,
-                  fontSize: "0.9rem",
-                  border: "none",
-                  cursor: "pointer"
-                }}
-              >
-                <svg width="18" height="18" viewBox="0 0 24 24">
-                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
-                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
-                </svg>
-                Continue with Google
-              </button>
-              <button
-                onClick={() => setShowLoginModal(false)}
-                style={{
-                  width: "100%",
-                  background: "transparent",
-                  border: "1px solid rgba(255,255,255,0.15)",
-                  color: "var(--text-muted)",
-                  padding: "10px",
-                  borderRadius: "8px",
-                  cursor: "pointer",
-                  fontSize: "0.85rem"
-                }}
-              >
-                Continue as Guest
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+
     </div>
   );
 }
