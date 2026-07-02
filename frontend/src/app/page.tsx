@@ -228,6 +228,79 @@ const renderFormattedText = (text: string) => {
   });
 };
 
+const SearchableSelect = ({ value, onChange, options, placeholder }: { value: string, onChange: (val: string) => void, options: string[], placeholder: string }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [search, setSearch] = useState(value);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setSearch(value);
+  }, [value]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+        setSearch(value); // reset to selected value if clicked outside
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [value]);
+
+  const filtered = options.filter(opt => opt.toLowerCase().includes(search.toLowerCase()));
+
+  return (
+    <div ref={wrapperRef} style={{ position: "relative" }}>
+      <input
+        type="text"
+        value={isOpen ? search : (value || search)}
+        onChange={(e) => {
+          setSearch(e.target.value);
+          setIsOpen(true);
+        }}
+        onFocus={() => setIsOpen(true)}
+        placeholder={placeholder}
+        style={{
+          width: "100%", background: "rgba(34, 19, 69, 0.6)", border: "1px solid var(--glass-border)",
+          borderRadius: "10px", padding: "12px", color: "#fff", outline: "none", boxSizing: "border-box"
+        }}
+      />
+      {isOpen && (
+        <div style={{
+          position: "absolute", top: "100%", left: 0, right: 0, background: "rgba(20, 10, 45, 0.95)",
+          border: "1px solid var(--glass-border)", borderRadius: "10px", marginTop: "4px",
+          maxHeight: "200px", overflowY: "auto", zIndex: 1000,
+          backdropFilter: "blur(10px)"
+        }}>
+          {filtered.length === 0 ? (
+            <div style={{ padding: "10px", color: "var(--text-muted)", fontSize: "0.9rem" }}>No city found...</div>
+          ) : (
+            filtered.map(opt => (
+              <div
+                key={opt}
+                onClick={() => {
+                  onChange(opt);
+                  setSearch(opt);
+                  setIsOpen(false);
+                }}
+                style={{
+                  padding: "10px 12px", color: "#fff", cursor: "pointer", borderBottom: "1px solid rgba(255,255,255,0.05)",
+                  background: opt === value ? "rgba(255,255,255,0.1)" : "transparent"
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.background = "rgba(255,255,255,0.1)"}
+                onMouseLeave={(e) => e.currentTarget.style.background = opt === value ? "rgba(255,255,255,0.1)" : "transparent"}
+              >
+                {opt}
+              </div>
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
 export default function Home() {
   const { data: session, status } = useSession();
 
@@ -1351,7 +1424,19 @@ export default function Home() {
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                 <label style={{ fontSize: "0.85rem", color: "var(--text-muted)", fontWeight: 600 }}>City *</label>
-                <input required type="text" value={checkoutForm.city} onChange={e => setCheckoutForm({ ...checkoutForm, city: e.target.value })} style={{ background: "rgba(34, 19, 69, 0.6)", border: "1px solid var(--glass-border)", borderRadius: "10px", padding: "12px", color: "#fff", outline: "none" }} />
+                <SearchableSelect
+                  value={checkoutForm.city}
+                  onChange={(val) => setCheckoutForm({ ...checkoutForm, city: val })}
+                  placeholder="Type to search your city..."
+                  options={[
+                    "Ampara", "Anuradhapura", "Badulla", "Batticaloa", "Colombo 01", "Colombo 02", "Colombo 03", 
+                    "Colombo 04", "Colombo 05", "Colombo 06", "Colombo 07", "Colombo 08", "Colombo 09", "Colombo 10", 
+                    "Colombo 11", "Colombo 12", "Colombo 13", "Colombo 14", "Colombo 15", "Galle", "Gampaha", 
+                    "Hambantota", "Jaffna", "Kalutara", "Kandy", "Kegalle", "Kilinochchi", "Kurunegala", "Mannar", 
+                    "Matale", "Matara", "Monaragala", "Mullaitivu", "Nuwara Eliya", "Polonnaruwa", "Puttalam", 
+                    "Rathnapura", "Trincomalee", "Vavuniya"
+                  ]}
+                />
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                 <label style={{ fontSize: "0.85rem", color: "var(--text-muted)", fontWeight: 600 }}>Delivery Date (YYYY-MM-DD) *</label>
