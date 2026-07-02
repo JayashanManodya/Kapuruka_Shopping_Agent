@@ -72,27 +72,21 @@ export default function UserProfile({ onTrackOrder }: UserProfileProps) {
         id="user-profile-btn"
         onClick={() => setPanelOpen(!panelOpen)}
         style={{
-          display: "flex", alignItems: "center", gap: "10px",
+          display: "flex", alignItems: "center", justifyContent: "center",
           background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)",
-          color: "#fff", padding: "6px 14px 6px 6px", borderRadius: "30px",
-          cursor: "pointer", transition: "all 0.2s ease",
+          color: "#fff", padding: "4px", borderRadius: "50%",
+          cursor: "pointer", transition: "all 0.2s ease", width: "42px", height: "42px"
         }}
         onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.14)")}
         onMouseLeave={e => (e.currentTarget.style.background = "rgba(255,255,255,0.08)")}
       >
         {session.user?.image ? (
-          <img src={session.user.image} alt="avatar" style={{ width: 30, height: 30, borderRadius: "50%", objectFit: "cover" }} />
+          <img src={session.user.image} alt="avatar" style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover" }} />
         ) : (
-          <div style={{ width: 30, height: 30, borderRadius: "50%", background: "var(--brand-yellow)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, color: "var(--brand-purple-dark)" }}>
+          <div style={{ width: "100%", height: "100%", borderRadius: "50%", background: "var(--brand-yellow)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, color: "var(--brand-purple-dark)" }}>
             {session.user?.name?.[0]?.toUpperCase()}
           </div>
         )}
-        <span className="user-name-text" style={{ fontSize: "0.85rem", fontWeight: 600, maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-          {session.user?.name?.split(" ")[0]}
-        </span>
-        <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={panelOpen ? "M5 15l7-7 7 7" : "M19 9l-7 7-7-7"} />
-        </svg>
       </button>
 
       {panelOpen && (
