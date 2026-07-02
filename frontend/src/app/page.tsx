@@ -719,11 +719,14 @@ export default function Home() {
           {session?.user && (
             <button
               onClick={() => setIsCartOpen(true)}
-              style={{ background: "transparent", border: "1px solid rgba(255,255,255,0.2)", borderRadius: "8px", padding: "8px 12px", color: "#fff", cursor: "pointer", display: "flex", gap: "8px", alignItems: "center" }}
+              style={{ background: "transparent", border: "none", borderRadius: "8px", padding: "8px", cursor: "pointer", display: "flex", gap: "8px", alignItems: "center", position: "relative" }}
+              aria-label="Cart"
             >
-              🛒 Cart
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="var(--brand-yellow)">
+                <path d="M7 18c-1.1 0-1.99.9-1.99 2S5.9 22 7 22s2-.9 2-2-.9-2-2-2zm10 0c-1.1 0-1.99.9-1.99 2s.89 2 1.99 2 2-.9 2-2-.9-2-2-2zm-9.83-3.25l.03-.12.9-1.63h7.45c.75 0 1.41-.41 1.75-1.03l3.58-6.49c.08-.14.12-.31.12-.48 0-.55-.45-1-1-1H5.21l-.94-2H1v2h2l3.6 7.59-1.35 2.44C7.1 15.36 7 15.67 7 16c0 1.1.9 2 2 2h12v-2H9.42c-.14 0-.25-.11-.25-.25z"/>
+              </svg>
               {cartItems.length > 0 && (
-                <span style={{ background: "var(--brand-yellow)", color: "#000", padding: "2px 6px", borderRadius: "12px", fontSize: "0.75rem", fontWeight: "bold" }}>
+                <span style={{ position: "absolute", top: "-2px", right: "-6px", background: "#ef4444", color: "#fff", padding: "2px 6px", borderRadius: "12px", fontSize: "0.75rem", fontWeight: "bold" }}>
                   {cartItems.reduce((acc, i) => acc + i.quantity, 0)}
                 </span>
               )}
