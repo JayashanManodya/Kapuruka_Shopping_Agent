@@ -379,6 +379,72 @@ export default function Home() {
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  const [isListening, setIsListening] = useState(false);
+  const silenceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const recognitionRef = useRef<any>(null);
+  const initialTextRef = useRef("");
+
+  const startListening = () => {
+    if (!("webkitSpeechRecognition" in window) && !("SpeechRecognition" in window)) {
+      alert("Voice chat is not supported in this browser. Please use Chrome or Edge.");
+      return;
+    }
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
+    recognition.lang = "en-US";
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    
+    recognitionRef.current = recognition;
+    
+    // Use the functional form to get the latest input text
+    setInputText((currentInputText) => {
+      initialTextRef.current = currentInputText ? currentInputText + " " : "";
+      return currentInputText;
+    });
+
+    recognition.onstart = () => setIsListening(true);
+    
+    recognition.onresult = (event: any) => {
+      let finalAndInterim = "";
+      for (let i = 0; i < event.results.length; ++i) {
+        finalAndInterim += event.results[i][0].transcript;
+      }
+      
+      setInputText(initialTextRef.current + finalAndInterim);
+
+      if (silenceTimeoutRef.current) {
+        clearTimeout(silenceTimeoutRef.current);
+      }
+
+      silenceTimeoutRef.current = setTimeout(() => {
+        recognition.stop();
+      }, 2500); // 2.5 seconds of silence
+    };
+    
+    recognition.onerror = (event: any) => {
+      console.error("Speech recognition error", event.error);
+      setIsListening(false);
+    };
+    
+    recognition.onend = () => {
+      setIsListening(false);
+      if (silenceTimeoutRef.current) {
+        clearTimeout(silenceTimeoutRef.current);
+      }
+      
+      // Give a tiny delay for React state to update the input text if needed, then click send
+      setTimeout(() => {
+        const sendBtn = document.getElementById("send-msg-btn") as HTMLButtonElement;
+        if (sendBtn && !sendBtn.disabled) {
+          sendBtn.click();
+        }
+      }, 100);
+    };
+
+    recognition.start();
+  };
+
   // Auto-scroll on new messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -1347,7 +1413,38 @@ export default function Home() {
 
           {/* Interactive Chat Input Bar */}
           <div style={{ padding: "20px 24px", borderTop: "1px solid var(--glass-border)", background: "rgba(21, 9, 42, 0.4)" }}>
-            <div style={{ display: "flex", gap: "12px", position: "relative" }}>
+            <div style={{ display: "flex", gap: "12px", position: "relative", alignItems: "center" }}>
+              <button
+                onClick={startListening}
+                disabled={isListening || isLoading}
+                title="Voice Input"
+                style={{
+                  background: isListening ? "rgba(239, 68, 68, 0.2)" : "rgba(34, 19, 69, 0.6)",
+                  border: isListening ? "1px solid rgba(239, 68, 68, 0.5)" : "1px solid var(--glass-border)",
+                  borderRadius: "50%",
+                  width: "52px",
+                  height: "52px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  cursor: isLoading ? "not-allowed" : "pointer",
+                  color: isListening ? "#ef4444" : "#e2d9f3",
+                  transition: "all 0.2s",
+                  flexShrink: 0
+                }}
+              >
+                {isListening ? (
+                  <svg className="animate-pulse" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
+                    <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
+                  </svg>
+                ) : (
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
+                    <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
+                  </svg>
+                )}
+              </button>
               <input
                 type="text"
                 placeholder="Ask for chocolate, gifts, flowers, cakes..."
@@ -1365,10 +1462,13 @@ export default function Home() {
                   fontSize: "0.95rem",
                   outline: "none",
                   transition: "border-color 0.2s",
-                  boxShadow: "inset 0 2px 4px rgba(0, 0, 0, 0.2)"
+                  boxShadow: "inset 0 2px 4px rgba(0, 0, 0, 0.2)",
+                  height: "52px",
+                  boxSizing: "border-box"
                 }}
               />
               <button
+                id="send-msg-btn"
                 onClick={() => handleSendMessage(inputText)}
                 disabled={isLoading || !inputText.trim()}
                 className="glow-button"
@@ -1376,18 +1476,21 @@ export default function Home() {
                   background: "var(--brand-yellow)",
                   color: "var(--brand-purple-dark)",
                   border: "none",
-                  borderRadius: "14px",
-                  padding: "0 24px",
-                  fontWeight: 700,
-                  fontSize: "0.95rem",
+                  borderRadius: "50%",
+                  width: "52px",
+                  height: "52px",
+                  padding: 0,
                   cursor: isLoading || !inputText.trim() ? "not-allowed" : "pointer",
                   opacity: isLoading || !inputText.trim() ? 0.6 : 1,
                   display: "flex",
                   alignItems: "center",
-                  gap: "8px"
+                  justifyContent: "center",
+                  flexShrink: 0
                 }}
               >
-                Send
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" style={{ marginLeft: "4px" }}>
+                  <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
+                </svg>
               </button>
             </div>
           </div>
