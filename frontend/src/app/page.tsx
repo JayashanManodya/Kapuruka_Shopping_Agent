@@ -896,23 +896,50 @@ export default function Home() {
 
                       {/* Render clean text response if there is any remaining content */}
                       {cleanedContent && (
-                        <div
-                          className="glass-panel"
-                          style={{
-                            background: "rgba(34, 19, 69, 0.4)",
-                            padding: "14px 18px",
-                            borderRadius: "16px 16px 16px 4px",
-                            color: "#fff",
-                            fontSize: "0.95rem",
-                            lineHeight: 1.5,
-                            whiteSpace: "pre-wrap",
-                            border: "1px solid var(--glass-border)",
-                            marginBottom: extractedIds.length > 0 ? "12px" : "0",
-                            maxWidth: "88%"
-                          }}
-                        >
-                          {renderFormattedText(cleanedContent)}
-                        </div>
+                        <>
+                          <div
+                            className="glass-panel"
+                            style={{
+                              background: "rgba(34, 19, 69, 0.4)",
+                              padding: "14px 18px",
+                              borderRadius: "16px 16px 16px 4px",
+                              color: "#fff",
+                              fontSize: "0.95rem",
+                              lineHeight: 1.5,
+                              whiteSpace: "pre-wrap",
+                              border: "1px solid var(--glass-border)",
+                              marginBottom: extractedIds.length > 0 ? "12px" : "0",
+                              maxWidth: "88%"
+                            }}
+                          >
+                            {renderFormattedText(cleanedContent)}
+                          </div>
+                          
+                          {/* Show a checkout button if the assistant mentions checkout */}
+                          {!checkoutInfo && /(?:checkout|check out|place an order|proceed to order)/i.test(cleanedContent) && (
+                            <div style={{ marginTop: "8px", marginBottom: "8px" }}>
+                              <button
+                                onClick={handleCartCheckout}
+                                className="glow-button"
+                                style={{
+                                  background: "var(--brand-yellow)",
+                                  color: "var(--brand-purple-dark)",
+                                  padding: "10px 18px",
+                                  borderRadius: "10px",
+                                  fontWeight: 800,
+                                  fontSize: "0.95rem",
+                                  border: "none",
+                                  cursor: "pointer",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: "6px"
+                                }}
+                              >
+                                <span>🛒</span> Open Checkout Form
+                              </button>
+                            </div>
+                          )}
+                        </>
                       )}
 
                       {/* Order Confirmation Card */}
