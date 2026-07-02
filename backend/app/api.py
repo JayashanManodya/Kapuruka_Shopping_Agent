@@ -64,8 +64,15 @@ async def chat(request: ChatRequest, session: AsyncSession = Depends(get_session
     try:
         async with get_checkpointer() as checkpointer:
             agent = workflow.compile(checkpointer=checkpointer)
+            
+            # Inject user_email into the messages so the agent knows who is logged in and can use it for tools
+            messages_to_send = []
+            if request.user_email:
+                messages_to_send.append({"role": "system", "content": f"The current user's email is {request.user_email}."})
+            messages_to_send.append({"role": "user", "content": request.message})
+            
             response = await agent.ainvoke(
-                {"messages": [{"role": "user", "content": request.message}]},
+                {"messages": messages_to_send},
                 config=config,
             )
 

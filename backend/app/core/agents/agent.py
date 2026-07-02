@@ -13,13 +13,13 @@ import sys
 try:
     from .tools import (
         get_categories, get_product, search_products,
-        list_delivery_cities, check_delivery, create_order, track_order
+        list_delivery_cities, check_delivery, create_order, track_order, check_cart
     )
 except ImportError:
     sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))))
     from app.core.agents.tools import (
         get_categories, get_product, search_products,
-        list_delivery_cities, check_delivery, create_order, track_order
+        list_delivery_cities, check_delivery, create_order, track_order, check_cart
     )
 
 from app.core.config.settings import settings
@@ -44,13 +44,13 @@ else:
 # Create Worker Agents using create_react_agent
 search_agent_node = create_react_agent(
     llm,
-    tools=[get_categories, search_products, get_product],
+    tools=[get_categories, search_products, get_product, check_cart],
     prompt=SystemMessage(content=SEARCH_AGENT_PROMPT)
 )
 
 checkout_agent_node = create_react_agent(
     llm,
-    tools=[list_delivery_cities, check_delivery, create_order],
+    tools=[list_delivery_cities, check_delivery, create_order, check_cart],
     prompt=SystemMessage(content=CHECKOUT_AGENT_PROMPT)
 )
 

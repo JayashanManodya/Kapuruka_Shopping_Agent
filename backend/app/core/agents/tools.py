@@ -6,6 +6,16 @@ from typing import List, Optional
 from pydantic import BaseModel, Field, field_validator
 import datetime
 
+@tool
+async def check_cart(user_email: str) -> dict:
+    """Return the items currently in the user's shopping cart."""
+    from app.core.db.database import AsyncSessionLocal, CartItem
+    from sqlmodel import select
+    
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(select(CartItem).where(CartItem.user_email == user_email))
+        items = result.scalars().all()
+        return {"cart": [i.model_dump() for i in items]}
 
 class KaprukaMCPClient:
     async def call(self, tool_name: str, params: dict):
