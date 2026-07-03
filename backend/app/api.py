@@ -92,10 +92,24 @@ async def chat(request: ChatRequest):
         history_json_str = serialize_messages(response.get("messages", []))
         history_list = json.loads(history_json_str)
         
-        # Only return the newly generated messages to append, or the whole history.
-        # Also return the updated cart state so frontend can sync.
+        # Extract the structured response parsed by the verification node
+        structured_response = response.get("structured_response", None)
+        
+        # Fallback: if verification node didn't set it, parse the last AI message
+        if structured_response is None:
+            from app.core.config.response_formats import parse_agent_response
+            last_ai = next(
+                (m for m in reversed(history_list) if m.get("role") == "assistant" and m.get("content")),
+                None
+            )
+            if last_ai:
+                parsed = parse_agent_response(last_ai["content"])
+                structured_response = parsed.model_dump()
+            else:
+                structured_response = {"type": "text", "message": ""}
+
         new_cart = current_cart.get()
-        return {"history": history_list, "cart": new_cart}
+        return {"history": history_list, "cart": new_cart, "structured_response": structured_response}
 
     except Exception as e:
         import traceback
