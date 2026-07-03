@@ -372,7 +372,7 @@ export default function Home() {
     setCartItems([]);
     const structured: AgentResponse = {
       type: "text",
-      message: `Thank you for confirming! I have cleared your cart for you. You can track your order status anytime using your Order Reference: **${currentOrderRef || "See Above"}**`
+      message: `Thank you for confirming! I have cleared your cart for you. You can track your order status anytime by pasting the **Order Number** sent to your email into this chat.`
     };
     const syntheticMsg: Message = { role: "assistant", content: JSON.stringify(structured), structured_response: structured };
     setMessages(prev => [...prev, syntheticMsg]);
