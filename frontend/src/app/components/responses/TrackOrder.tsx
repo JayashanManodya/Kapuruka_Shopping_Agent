@@ -25,7 +25,7 @@ export default function TrackOrder({ message, order_ref, status, timeline, recip
         {message}
       </div>
 
-      <div className="animate-fade-in" style={{ background: "#1e1b4b", borderRadius: "16px", padding: "20px", maxWidth: "460px", boxShadow: "0 8px 32px rgba(0,0,0,0.3)" }}>
+      <div className="animate-fade-in" style={{ background: "#3b2667", borderRadius: "16px", padding: "20px", maxWidth: "460px", boxShadow: "0 8px 32px rgba(0,0,0,0.3)" }}>
         {/* Header */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
           <div>
@@ -50,7 +50,7 @@ export default function TrackOrder({ message, order_ref, status, timeline, recip
                     border: entry.done ? "2px solid #facc15" : "2px solid rgba(255,255,255,0.2)",
                     display: "flex", alignItems: "center", justifyContent: "center"
                   }}>
-                    {entry.done && <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#1e1b4b" strokeWidth="3"><polyline points="20 6 9 17 4 12"></polyline></svg>}
+                    {entry.done && <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#3b2667" strokeWidth="3"><polyline points="20 6 9 17 4 12"></polyline></svg>}
                   </div>
                   {i < timeline.length - 1 && (
                     <div style={{ width: "2px", height: "24px", background: entry.done ? "rgba(250,204,21,0.4)" : "rgba(255,255,255,0.1)", margin: "2px 0" }}></div>

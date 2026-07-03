@@ -47,7 +47,7 @@ interface ChatThread {
 
 function KaprukaLogo() {
   return (
-    <div className="flex items-center gap-1 bg-white px-4 py-2 rounded-xl font-extrabold text-[#37246b] tracking-tight select-none border border-purple-500/20" style={{ fontFamily: "var(--font-sans), sans-serif", fontSize: "1.25rem", display: "inline-flex", alignItems: "center" }}>
+    <div className="flex items-center gap-1 font-extrabold text-white tracking-tight select-none" style={{ fontFamily: "var(--font-sans), sans-serif", fontSize: "1.4rem", display: "inline-flex", alignItems: "center" }}>
       <span>kap</span>
       <span style={{ position: "relative", display: "inline-block" }}>
         ru
