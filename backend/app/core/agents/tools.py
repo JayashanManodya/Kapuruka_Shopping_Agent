@@ -347,6 +347,7 @@ async def create_order(
     recipient: RecipientInfo, 
     delivery: DeliveryInfo, 
     sender: SenderInfo, 
+    user_confirmed: bool = Field(False, description="MUST be set to True ONLY if the user explicitly confirmed the order summary in their most recent message."),
     gift_message: Optional[str] = None, 
     currency: Optional[str] = None
 ) -> dict:
@@ -363,6 +364,9 @@ async def create_order(
     Returns:
         JSON-compatible checkout URL and order ref from `kapruka_create_order`.
     """
+    if not user_confirmed:
+        return {"error": "Execution denied. You must ask the user to confirm the order summary first. You can only set user_confirmed=True if they have explicitly confirmed."}
+        
     result = await client.call(
         "kapruka_create_order",
         {
