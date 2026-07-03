@@ -740,7 +740,7 @@ export default function Home() {
                 Hey there! Ready to dive into Kapruka?
               </h1>
               <div style={{ width: "100%", maxWidth: "800px" }}>
-                <div style={{ display: "flex", gap: "12px", position: "relative", alignItems: "center", background: "#fff", padding: "8px 16px", borderRadius: "30px", width: "100%", boxShadow: "0 4px 20px rgba(0,0,0,0.1)" }}>
+                <div style={{ display: "flex", gap: "12px", position: "relative", alignItems: "center", background: "#fff", padding: "8px 16px", borderRadius: "30px", width: "100%", border: "1px solid #d1d5db" }}>
                   <button style={{ background: "transparent", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "#666", padding: "8px", flexShrink: 0 }}>
                     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" /></svg>
                   </button>
@@ -864,13 +864,36 @@ export default function Home() {
                     </div>
                   )}
 
-                  <div ref={messagesEndRef} />
+                  <div ref={messagesEndRef} style={{ height: "100px" }} />
                 </div>
               </div>
 
-              {/* Input Bar */}
-              <div style={{ padding: "20px 24px", display: "flex", justifyContent: "center" }}>
-                <div style={{ display: "flex", gap: "12px", position: "relative", alignItems: "center", background: "#fff", padding: "8px 16px", borderRadius: "30px", width: "100%", maxWidth: "800px", boxShadow: "0 4px 20px rgba(0,0,0,0.1)" }}>
+              {/* Input Bar (Floating) */}
+              <div style={{ 
+                position: "absolute", 
+                bottom: 0, 
+                left: 0, 
+                right: 0, 
+                padding: "20px 24px", 
+                display: "flex", 
+                justifyContent: "center",
+                background: "transparent",
+                pointerEvents: "none",
+                zIndex: 10
+              }}>
+                <div style={{ 
+                  display: "flex", 
+                  gap: "12px", 
+                  position: "relative", 
+                  alignItems: "center", 
+                  background: "#fff", 
+                  padding: "8px 16px", 
+                  borderRadius: "30px", 
+                  width: "100%", 
+                  maxWidth: "800px", 
+                  border: "1px solid #d1d5db",
+                  pointerEvents: "auto"
+                }}>
                   <button style={{ background: "transparent", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "#666", padding: "8px", flexShrink: 0 }}>
                     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" /></svg>
                   </button>
