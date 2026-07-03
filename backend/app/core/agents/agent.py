@@ -9,6 +9,7 @@ from langchain_groq import ChatGroq
 import json
 import os
 import sys
+from datetime import datetime
 
 try:
     from .tools import (
@@ -45,7 +46,7 @@ search_agent_node = create_react_agent(
 
 checkout_agent_node = create_react_agent(
     llm,
-    tools=[list_delivery_cities, check_delivery, create_order,manage_cart],
+    tools=[list_delivery_cities, check_delivery, create_order, manage_cart],
     prompt=SystemMessage(content=CHECKOUT_AGENT_PROMPT)
 )
 
@@ -60,7 +61,7 @@ class AgentState(TypedDict):
     next_node: str
     active_worker: str
 
-def trim_messages_for_llm(messages: Sequence[BaseMessage], max_msgs: int = 40) -> list[BaseMessage]:
+def trim_messages_for_llm(messages: Sequence[BaseMessage], max_msgs: int = 15) -> list[BaseMessage]:
     """Keep only the last N messages to save tokens. Ensures we start at a HumanMessage."""
     if len(messages) <= max_msgs:
         return list(messages)
@@ -70,8 +71,25 @@ def trim_messages_for_llm(messages: Sequence[BaseMessage], max_msgs: int = 40) -
         trimmed.pop(0)
     return trimmed
 
+def log_messages(node_name: str, messages: Sequence[BaseMessage]):
+    current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    print(f"\n{'='*50}\n[{current_time}] [{node_name}] State: {len(messages)} messages\n{'='*50}")
+    for i, msg in enumerate(messages):
+        content = msg.content
+        if isinstance(content, list):
+            content = "[List Content]"
+        elif isinstance(content, str) and len(content) > 100:
+            content = content[:100] + "..."
+        
+        tool_call_info = ""
+        if hasattr(msg, "tool_calls") and msg.tool_calls:
+            tool_call_info = f" | Tools: {[t['name'] for t in msg.tool_calls]}"
+            
+        print(f"[{i}] {msg.type.upper()}{tool_call_info}:\n{content}\n{'-'*30}")
+
 async def supervisor_node(state: AgentState) -> dict:
     # Ask the LLM which agent to route to
+    log_messages("Supervisor", state["messages"])
     messages = trim_messages_for_llm(state["messages"])
     
     prompt = [SystemMessage(content=SUPERVISOR_PROMPT)] + messages
@@ -86,21 +104,25 @@ async def supervisor_node(state: AgentState) -> dict:
     return {"active_worker": route}
 
 async def call_search_agent(state: AgentState) -> dict:
+    log_messages("Search Agent", state["messages"])
     msgs = trim_messages_for_llm(state["messages"])
     response = await search_agent_node.ainvoke({"messages": msgs})
     return {"messages": response["messages"]}
 
 async def call_checkout_agent(state: AgentState) -> dict:
+    log_messages("Checkout Agent", state["messages"])
     msgs = trim_messages_for_llm(state["messages"])
     response = await checkout_agent_node.ainvoke({"messages": msgs})
     return {"messages": response["messages"]}
 
 async def call_tracking_agent(state: AgentState) -> dict:
+    log_messages("Tracking Agent", state["messages"])
     msgs = trim_messages_for_llm(state["messages"])
     response = await tracking_agent_node.ainvoke({"messages": msgs})
     return {"messages": response["messages"]}
 
 async def verification_node(state: AgentState) -> dict:
+    log_messages("Verification", state["messages"])
     messages = state["messages"]
     
     user_msgs = [m for m in messages if m.type == "human"]
@@ -126,7 +148,7 @@ async def verification_node(state: AgentState) -> dict:
         if m.type == "tool":
             tool_name = getattr(m, "name", "unknown_tool")
             # Include a truncated snippet of the tool result as evidence
-            result_snippet = str(m.content)[:500]
+            result_snippet = str(m.content)[:10000]
             tool_evidence_parts.append(f"Tool Result ({tool_name}): {result_snippet}")
 
     tool_evidence = "\n".join(tool_evidence_parts) if tool_evidence_parts else "No tool calls were made."

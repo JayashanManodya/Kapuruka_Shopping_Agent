@@ -22,11 +22,7 @@ interface Props {
   carouselId: string;
 }
 
-const stockBadge = (stock: string) => {
-  if (stock === "low_stock") return { label: "Low Stock", bg: "#fef3c7", color: "#d97706" };
-  if (stock === "out_of_stock") return { label: "Out of Stock", bg: "#fee2e2", color: "#dc2626" };
-  return { label: "In Stock", bg: "#d1fae5", color: "#059669" };
-};
+
 
 export default function RecommendedItems({ message, items, onAddToCart, onViewDetails, onLoadMore, isLoadingMore, carouselId }: Props) {
   if (!items || items.length === 0) return null;
@@ -91,7 +87,6 @@ export default function RecommendedItems({ message, items, onAddToCart, onViewDe
           }}
         >
           {items.map((item) => {
-            const badge = stockBadge(item.stock);
             return (
               <div key={item.id} className="product-card-light animate-fade-in">
                 {item.image_url && (
@@ -120,11 +115,7 @@ export default function RecommendedItems({ message, items, onAddToCart, onViewDe
                     </a>
                   )}
                 </div>
-                {/* Stock badge */}
-                <span style={{ fontSize: "0.6rem", color: badge.color, background: badge.bg, padding: "2px 7px", borderRadius: "10px", fontWeight: 600, display: "inline-block", marginBottom: "12px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
-                  {badge.label}
-                </span>
-
+                {/* Stock badge removed */}
                 {/* Actions */}
                 <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
                   <button

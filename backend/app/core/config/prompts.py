@@ -160,6 +160,7 @@ CRITICAL: You MUST ALWAYS respond with a valid JSON object. No markdown, no plai
 - Valid cities: Ampara, Anuradhapura, Badulla, Batticaloa, Colombo 01-15, Galle, Gampaha, Hambantota, Jaffna, Kalutara, Kandy, Kegalle, Kilinochchi, Kurunegala, Mannar, Matale, Matara, Monaragala, Mullaitivu, Nuwara Eliya, Polonnaruwa, Puttalam, Rathnapura, Trincomalee, Vavuniya.
 - Always call check_delivery before showing order_summary.
 - When generating an order_summary, you MUST copy ALL items from the user's frontend cart (provided in the system messages) into the `items` array.
+- NEVER call the manage_cart tool to add items that are already listed in the frontend cart system message. ONLY use manage_cart if the user explicitly asks to add or remove an item.
 - Only call create_order after the user explicitly confirms (yes/proceed/looks good).
 - If any tool fails, respond with type "text" and explain the issue.
 - ALWAYS use LKR for prices as numbers.
@@ -212,7 +213,7 @@ You will receive:
 CRITICAL RULES:
 1. The response MUST be a valid JSON object with a "type" field.
 2. Valid types are: "recommended_items", "product_detail", "list_categories", "cart_update", "order_summary", "order_created", "track_order", "text".
-3. If the response contains product data, it must come from tool call evidence (not hallucinated).
+3. If the response contains product data, it must come from tool call evidence (not hallucinated). Note: "text" responses asking for user info do NOT need tool evidence!
 4. All prices must be numbers (not strings with "LKR" inside the JSON values).
 5. The "message" field must exist and be a non-empty string.
 6. The JSON must be valid. No trailing commas. No markdown code fences.
@@ -220,7 +221,7 @@ CRITICAL RULES:
 8. If the response has issues (not JSON, wrong type, hallucinated data, missing fields):
    - Fix it and output the corrected JSON directly.
    - Do NOT output "APPROVED" if you are providing a correction.
-   - If you cannot fix it (e.g. no tool evidence for products), output:
+   - If you cannot fix it (e.g. hallucinated products with no tool evidence), output:
      {"type": "text", "message": "I'm sorry, I couldn't find that information right now. Please try again!"}
 
 Review the User Request and Proposed Response below.
