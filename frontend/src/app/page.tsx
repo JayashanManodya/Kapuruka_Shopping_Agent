@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import { RotateCcw, ShoppingCart, Settings, Mic, Paperclip } from "lucide-react";
 import UserProfile from "./components/UserProfile";
 import RecommendedItems from "./components/responses/RecommendedItems";
 import ProductDetail from "./components/responses/ProductDetail";
@@ -627,39 +628,42 @@ export default function Home() {
   return (
     <div style={{ height: "100vh", display: "flex", flexDirection: "column" }}>
 
+      <div className="animated-bg"></div>
+      <div className="blob-3"></div>
+
       {/* Top Branded Header */}
-      <header className="header-container">
-        <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-          <KaprukaLogo />
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
+      <header style={{ width: "100%", padding: "24px 48px", display: "flex", alignItems: "center", justifyContent: "space-between", background: "transparent", zIndex: 100 }}>
+        <img
+          src="/kapruka-logo.webp"
+          alt="Kapruka"
+          style={{ height: "auto", width: "160px" }}
+        />
+        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
           <button
             onClick={resetChat}
-            style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: "50%", padding: "8px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", width: "42px", height: "42px", color: "#fff" }}
+            style={{ background: "#5322B8", border: "none", borderRadius: "50%", padding: "8px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", width: "48px", height: "48px", color: "#fff", boxShadow: "0 4px 6px rgba(0,0,0,0.1)" }}
             aria-label="Reset Chat"
           >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="1 4 1 10 7 10"></polyline>
-              <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
-            </svg>
+            <RotateCcw size={24} strokeWidth={1.5} />
           </button>
           <button
             onClick={() => setIsCartOpen(true)}
-            style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: "50%", padding: "8px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", width: "42px", height: "42px", position: "relative" }}
+            style={{ position: "relative", background: "#5322B8", border: "none", borderRadius: "50%", padding: "8px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", width: "48px", height: "48px", color: "#fff", boxShadow: "0 4px 6px rgba(0,0,0,0.1)" }}
             aria-label="Cart"
           >
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
-              <line x1="3" y1="6" x2="21" y2="6" />
-              <path d="M16 10a4 4 0 0 1-8 0" />
-            </svg>
             {cartItems.length > 0 && (
-              <span style={{ position: "absolute", top: "-4px", right: "-4px", background: "var(--brand-yellow)", color: "var(--brand-purple-dark)", padding: "2px 6px", borderRadius: "12px", fontSize: "0.75rem", fontWeight: "bold" }}>
+              <span style={{ position: "absolute", top: "-4px", right: "-4px", background: "linear-gradient(to bottom right, #facc15, #eab308)", color: "#fff", width: "22px", height: "22px", display: "flex", alignItems: "center", justifyContent: "center", borderRadius: "50%", fontSize: "0.75rem", fontWeight: "bold", boxShadow: "0 2px 4px rgba(0,0,0,0.2)" }}>
                 {cartItems.reduce((acc, i) => acc + i.quantity, 0)}
               </span>
             )}
+            <ShoppingCart size={24} strokeWidth={1.5} />
           </button>
-          <UserProfile onTrackOrder={(msg) => handleSendMessage(msg)} />
+          <button
+            style={{ background: "#5322B8", border: "none", borderRadius: "50%", padding: "8px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", width: "48px", height: "48px", color: "#fff", boxShadow: "0 4px 6px rgba(0,0,0,0.1)" }}
+            aria-label="Settings"
+          >
+            <Settings size={24} strokeWidth={1.5} />
+          </button>
         </div>
       </header>
 
@@ -731,60 +735,64 @@ export default function Home() {
         </div>
 
         {/* Chat Section */}
-        <section className="glass-card chat-section">
+        <section className={`glass-card chat-section ${messages.length === 0 ? "empty" : ""}`} style={{ background: messages.length === 0 ? "transparent" : "var(--card-bg)" }}>
 
           {messages.length === 0 ? (
-            // ── Empty State ──
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", padding: "40px 20px" }}>
-              <h1 style={{ color: "var(--brand-purple-dark)", fontSize: "1.8rem", fontWeight: 600, marginBottom: "40px", textAlign: "center" }}>
-                Hey there! Ready to dive into Kapruka?
-              </h1>
-              <div style={{ width: "100%", maxWidth: "800px" }}>
-                <div style={{ display: "flex", gap: "12px", position: "relative", alignItems: "center", background: "#fff", padding: "8px 16px", borderRadius: "30px", width: "100%", border: "1px solid #d1d5db" }}>
-                  <button style={{ background: "transparent", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "#666", padding: "8px", flexShrink: 0 }}>
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" /></svg>
-                  </button>
+            // ── KIKO UI Empty State ──
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", padding: "20px", position: "relative" }}>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: "24px" }}>
+                <div className="float-rotate-animation">
+                  <img
+                    src="/chatbot-logo.png"
+                    alt="Kapruka AI Chatbot"
+                    style={{ width: "128px", height: "128px" }}
+                  />
+                </div>
+              </div>
+
+              <div style={{ textAlign: "center", maxWidth: "800px", marginBottom: "32px" }}>
+                <h1 style={{ fontSize: "2.8rem", fontWeight: 700, lineHeight: 1.2, color: "#2D2375" }}>
+                  Hi I'm <span style={{ color: "#5322B8" }}>KIKO</span>, Ready to<br />Help Shopping?
+                </h1>
+              </div>
+
+              <div style={{ width: "100%", maxWidth: "600px", margin: "0 auto 24px auto" }}>
+                <div className="search-glow" style={{ background: "#fff", borderRadius: "999px", padding: "12px 24px", display: "flex", alignItems: "center", gap: "12px" }}>
+                  <img src="/chatbot-logo.png" alt="Kiko" style={{ width: "24px", height: "24px", flexShrink: 0 }} />
                   <input
                     type="text"
-                    placeholder="Ask Kapruka Agent..."
+                    placeholder="Ask anything you want..."
                     value={inputText}
                     onChange={e => setInputText(e.target.value)}
                     onKeyDown={handleKeyPress}
                     disabled={isLoading}
-                    style={{ flex: 1, background: "transparent", border: "none", color: "#333", fontSize: "1rem", outline: "none", height: "40px" }}
+                    style={{ flex: 1, background: "transparent", border: "none", color: "#374151", fontSize: "1rem", outline: "none" }}
                   />
-                  <button
-                    onClick={toggleListening}
-                    disabled={isLoading}
-                    className="glow-button"
-                    style={{ background: "var(--brand-purple-dark)", color: "#fff", border: "none", borderRadius: "50%", width: "44px", height: "44px", padding: 0, cursor: isLoading ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
-                    id="send-msg-btn-empty"
-                  >
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z" />
-                      <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z" />
-                    </svg>
+                  <button onClick={toggleListening} style={{ background: "transparent", border: "none", cursor: "pointer", padding: "6px", display: "flex", alignItems: "center", justifyContent: "center", color: "#4b5563" }}>
+                    <Mic size={20} color={isListening ? "#ef4444" : "currentColor"} />
+                  </button>
+                  <button style={{ background: "transparent", border: "none", cursor: "pointer", padding: "6px", display: "flex", alignItems: "center", justifyContent: "center", color: "#4b5563" }}>
+                    <Paperclip size={20} />
                   </button>
                 </div>
-                {/* Quick-action chips */}
-                <div className="animate-fade-in" style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "10px", marginTop: "24px" }}>
-                  {[
-                    { icon: "🎁", label: "Find a gift for someone special", msg: "I need a gift for my friend. Can you suggest something under 3000 LKR?" },
-                    { icon: "🍫", label: "Search chocolates & sweets", msg: "Show me chocolate boxes available for delivery today." },
-                    { icon: "🌸", label: "Browse flowers & bouquets", msg: "Search for flower bouquets for a birthday." },
-                    { icon: "🚚", label: "Check delivery availability", msg: "Can you deliver to Kandy today?" },
-                  ].map((chip, i) => (
-                    <button
-                      key={i}
-                      onClick={() => handleSendMessage(chip.msg)}
-                      style={{ display: "flex", alignItems: "center", gap: "8px", background: "#ffffff", border: "1px solid var(--glass-border)", color: "#333", padding: "9px 16px", borderRadius: "24px", fontSize: "0.85rem", fontWeight: 500, cursor: "pointer", transition: "all 0.18s ease" }}
-                      onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,210,0,0.12)"; e.currentTarget.style.borderColor = "rgba(255,210,0,0.4)"; }}
-                      onMouseLeave={e => { e.currentTarget.style.background = "#ffffff"; e.currentTarget.style.borderColor = "var(--glass-border)"; }}
-                    >
-                      <span>{chip.icon}</span><span>{chip.label}</span>
-                    </button>
-                  ))}
-                </div>
+              </div>
+
+              {/* Categories */}
+              <div style={{ width: "100%", maxWidth: "800px", display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "10px" }}>
+                {['Birthday Gifts', 'Flowers', 'Cakes', 'Chocolates', 'Groceries', 'Check Delivery'].map((cat) => (
+                  <button
+                    key={cat}
+                    onClick={() => handleSendMessage(`Show me ${cat}`)}
+                    style={{ background: "#5322B8", color: "#fff", border: "none", borderRadius: "999px", padding: "6px 18px", fontSize: "0.85rem", fontWeight: 600, cursor: "pointer", transition: "all 0.2s ease" }}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
+
+              {/* Footer */}
+              <div style={{ position: "absolute", bottom: "32px", left: 0, right: 0, textAlign: "center", fontSize: "0.8rem", color: "#6b7280" }}>
+                Powered by <span style={{ color: "#5322B8", fontWeight: "bold" }}>Kapruka MCP</span> • Build by <a href="https://www.jayashan.online/" target="_blank" rel="noopener noreferrer" style={{ color: "#5322B8", fontWeight: "bold", textDecoration: "none" }}>Jayashan Manodya</a>
               </div>
             </div>
           ) : (
