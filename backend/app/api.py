@@ -96,15 +96,42 @@ async def chat(request: ChatRequest):
         sanitized_messages = []
         for i, m in enumerate(messages_to_send):
             if isinstance(m, ToolMessage):
-                # Check if preceding message was an AIMessage with tool_calls
-                if i > 0 and isinstance(sanitized_messages[-1], AIMessage) and getattr(sanitized_messages[-1], "tool_calls", None):
+                # Check if there is an AIMessage with tool_calls before this (ignoring other ToolMessages in between)
+                valid = False
+                for prev in reversed(sanitized_messages):
+                    if isinstance(prev, AIMessage):
+                        if getattr(prev, "tool_calls", None):
+                            valid = True
+                        break
+                
+                if valid:
                     sanitized_messages.append(m)
                 else:
                     print(f"Dropping orphaned tool message: {m.name}")
                     continue
             else:
                 sanitized_messages.append(m)
-        messages_to_send = sanitized_messages
+        
+        # Additional sanitize: Remove tool_calls from AIMessages if they don't have corresponding ToolMessages
+        final_messages = []
+        for i, m in enumerate(sanitized_messages):
+            if isinstance(m, AIMessage) and getattr(m, "tool_calls", None):
+                # Count tool calls
+                expected_calls = set(tc["id"] for tc in m.tool_calls)
+                # Find following ToolMessages
+                for next_m in sanitized_messages[i+1:]:
+                    if isinstance(next_m, ToolMessage):
+                        if next_m.tool_call_id in expected_calls:
+                            expected_calls.remove(next_m.tool_call_id)
+                    elif isinstance(next_m, AIMessage) or isinstance(next_m, HumanMessage):
+                        break # Stop looking when we hit another AI or Human message
+                
+                if len(expected_calls) > 0:
+                    # Missing responses! Strip tool calls to prevent OpenAI 400 errors.
+                    m.tool_calls = []
+            final_messages.append(m)
+            
+        messages_to_send = final_messages
             
         # Invoke the stateless agent
         response = await shopping_agent.ainvoke(

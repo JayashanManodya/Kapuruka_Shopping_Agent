@@ -46,7 +46,7 @@ search_agent_node = create_react_agent(
 
 checkout_agent_node = create_react_agent(
     llm,
-    tools=[list_delivery_cities, check_delivery, create_order, manage_cart],
+    tools=[list_delivery_cities, check_delivery, create_order],
     prompt=SystemMessage(content=CHECKOUT_AGENT_PROMPT)
 )
 
@@ -109,9 +109,76 @@ async def call_search_agent(state: AgentState) -> dict:
     response = await search_agent_node.ainvoke({"messages": msgs})
     return {"messages": response["messages"]}
 
+def _has_checkout_details(messages) -> bool:
+    """Check if the user has already provided the essential checkout fields (phone + date + city/address)."""
+    import re
+    # Scan ALL human messages — not just the trimmed window
+    human_text = " ".join(
+        m.content for m in messages if getattr(m, "type", "") == "human"
+    ).lower()
+
+    # Phone: Sri Lankan +94 format (with or without spaces/dashes) or local 07x format
+    has_phone = bool(re.search(
+        r'(\+94[\s\-]?\d[\s\-]?\d[\s\-]?\d[\s\-]?\d[\s\-]?\d[\s\-]?\d[\s\-]?\d[\s\-]?\d[\s\-]?\d|0\d{9}|\d{10})',
+        human_text
+    ))
+    # Date: YYYY-MM-DD or YYYY/MM/DD
+    has_date = bool(re.search(r'20\d{2}[-/]\d{2}[-/]\d{2}', human_text))
+    # Location: city name or address keyword
+    has_location = bool(re.search(
+        r'\b(colombo|kandy|galle|matara|kurunegala|jaffna|negombo|ratnapura|badulla|'
+        r'kalutara|moratuwa|gampaha|anuradhapura|batticaloa|trincomalee|puttalam|'
+        r'street|road|lane|mawatha|avenue|no\.|prince|deliver to|address)\b',
+        human_text
+    ))
+    return has_phone and has_date and has_location
+
+
+def _is_confirming_order_summary(messages) -> bool:
+    """Check if the user's last message is a 'yes/confirm' to an order_summary shown just before it."""
+    ai_msgs = [m for m in messages if getattr(m, "type", "") == "ai"]
+    human_msgs = [m for m in messages if getattr(m, "type", "") == "human"]
+    if not ai_msgs or not human_msgs:
+        return False
+    last_human = human_msgs[-1].content.strip().lower()
+    is_affirmation = any(w in last_human for w in ["yes", "confirm", "proceed", "place", "create order", "go ahead", "ok", "sure", "yep", "yup"])
+    if not is_affirmation:
+        return False
+    # Check if the last meaningful AI message was an order_summary
+    for m in reversed(ai_msgs):
+        content = m.content.strip()
+        if '"type": "order_summary"' in content or '"type":"order_summary"' in content:
+            return True
+        if content and len(content) > 20:
+            return False
+    return False
+
+
 async def call_checkout_agent(state: AgentState) -> dict:
     log_messages("Checkout Agent", state["messages"])
     msgs = trim_messages_for_llm(state["messages"])
+
+    # Run these checks on ALL messages (not trimmed), so details given earlier aren't missed
+    all_messages = list(state["messages"])
+
+    # If user is confirming an order summary, allow the LLM to proceed with create_order
+    if _is_confirming_order_summary(all_messages):
+        response = await checkout_agent_node.ainvoke({"messages": msgs})
+        return {"messages": response["messages"]}
+
+    # Hard guard: if user hasn't provided checkout details yet, force the collect-details response
+    if not _has_checkout_details(all_messages):
+        forced_response = (
+            '{"type": "text", "message": "Sure thing, machan! Let\'s get this sorted!\\n\\n'
+            'To complete your order, I just need a few details from you:\\n\\n'
+            '- Recipient Name & Phone Number\\n'
+            '- Delivery Address & City\\n'
+            '- Delivery Date (e.g. 2026-07-10)\\n'
+            '- Your Name (as the sender)\\n\\n'
+            'Once you share these, I\'ll get everything prepped right away!"}'
+        )
+        return {"messages": msgs + [AIMessage(content=forced_response)]}
+
     response = await checkout_agent_node.ainvoke({"messages": msgs})
     return {"messages": response["messages"]}
 
