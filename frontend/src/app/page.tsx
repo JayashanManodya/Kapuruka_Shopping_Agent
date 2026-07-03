@@ -10,6 +10,7 @@ interface Message {
   tool_calls?: any[];
   tool_call_id?: string;
   name?: string;
+  hidden?: boolean;
 }
 
 interface NormalizedProduct {
@@ -20,6 +21,13 @@ interface NormalizedProduct {
   inStock: boolean;
   url?: string;
   description: string;
+  type?: string;
+  subtype?: string;
+  weight?: string | number;
+  vendor?: string;
+  variants?: any[];
+  thumbnails?: string[];
+  stock_level?: string;
 }
 
 interface ChatThread {
@@ -122,7 +130,14 @@ const getProductCache = (msgs: Message[]) => {
             price: parsed.price?.amount || 0,
             inStock: parsed.stock_level !== "out_of_stock" && parsed.in_stock !== false,
             url: parsed.url || "",
-            description: parsed.description || ""
+            description: parsed.description || "",
+            type: parsed.type || "",
+            subtype: parsed.subtype || "",
+            weight: parsed.weight || 0,
+            vendor: parsed.vendor || "Kapruka",
+            variants: parsed.variants || [],
+            thumbnails: parsed.images || [],
+            stock_level: parsed.stock_level || ""
           };
         }
       }
@@ -162,14 +177,16 @@ const extractCheckoutInfo = (text: string) => {
   }
 
   const refMatch = text.match(/order[_\s]?ref[:\s]*([A-Z0-9\-_]+)/i);
-  const expiresMatch = text.match(/expires[_\s]?at[:\s]*([^\n,]+)/i);
+  const itemsMatch = text.match(/total[_\s]?items[:\s]*([0-9]+)/i);
+  const amountMatch = text.match(/total[_\s]?amount[:\s]*(LKR\s*[\d,.]+)/i);
 
   if (!url && !refMatch) return null;
 
   return {
     url: url,
     ref: refMatch?.[1] ?? null,
-    expires: expiresMatch?.[1]?.trim() ?? null,
+    items: itemsMatch?.[1] ?? null,
+    total: amountMatch?.[1] ?? null,
   };
 };
 
@@ -218,12 +235,47 @@ const cleanAssistantText = (content: string, extractedIds: string[]) => {
 
 const renderFormattedText = (text: string) => {
   if (!text) return null;
-  const parts = text.split(/\*\*(.*?)\*\*/g);
-  return parts.map((part, index) => {
-    if (index % 2 === 1) {
-      return <strong key={index} style={{ fontWeight: 800, color: "inherit" }}>{part}</strong>;
+  // First split by markdown links [text](url)
+  const linkParts = text.split(/\[([^\]]+)\]\(([^)]+)\)/g);
+
+  return linkParts.map((part, index, arr) => {
+    if (index % 3 === 0) {
+      // Normal text, apply bold parsing
+      const boldParts = part.split(/\*\*(.*?)\*\*/g);
+      return (
+        <span key={index}>
+          {boldParts.map((bPart, bIndex) => {
+            if (bIndex % 2 === 1) {
+              return <strong key={bIndex} style={{ fontWeight: 800, color: "inherit" }}>{bPart}</strong>;
+            }
+            return <span key={bIndex}>{bPart}</span>;
+          })}
+        </span>
+      );
     }
-    return <span key={index}>{part}</span>;
+    if (index % 3 === 1) {
+      // Link label
+      const url = arr[index + 1];
+      return (
+        <a
+          key={index}
+          href={url}
+          onClick={(e) => {
+            if (url === "#" || url.includes("basket") || url.includes("cart")) {
+              e.preventDefault();
+              if (typeof window !== "undefined") {
+                window.dispatchEvent(new CustomEvent('open-cart'));
+              }
+            }
+          }}
+          style={{ color: "var(--brand-purple)", fontWeight: "bold", textDecoration: "underline", cursor: "pointer" }}
+        >
+          {part}
+        </a>
+      );
+    }
+    // index % 3 === 2 is the URL, skip it
+    return null;
   });
 };
 
@@ -349,9 +401,9 @@ export default function Home() {
     recognition.lang = "en-US";
     recognition.continuous = true;
     recognition.interimResults = true;
-    
+
     recognitionRef.current = recognition;
-    
+
     // Use the functional form to get the latest input text
     setInputText((currentInputText) => {
       initialTextRef.current = currentInputText ? currentInputText + " " : "";
@@ -359,13 +411,13 @@ export default function Home() {
     });
 
     recognition.onstart = () => setIsListening(true);
-    
+
     recognition.onresult = (event: any) => {
       let finalAndInterim = "";
       for (let i = 0; i < event.results.length; ++i) {
         finalAndInterim += event.results[i][0].transcript;
       }
-      
+
       setInputText(initialTextRef.current + finalAndInterim);
 
       if (silenceTimeoutRef.current) {
@@ -376,7 +428,7 @@ export default function Home() {
         recognition.stop();
       }, 2500); // 2.5 seconds of silence
     };
-    
+
     recognition.onerror = (event: any) => {
       if (event.error === "aborted") {
         // Expected when manually stopped or silence timeout stops it
@@ -386,13 +438,13 @@ export default function Home() {
       console.error("Speech recognition error:", event.error);
       setIsListening(false);
     };
-    
+
     recognition.onend = () => {
       setIsListening(false);
       if (silenceTimeoutRef.current) {
         clearTimeout(silenceTimeoutRef.current);
       }
-      
+
       // Give a tiny delay for React state to update the input text if needed, then click send
       setTimeout(() => {
         const sendBtn = document.getElementById("send-msg-btn") as HTMLButtonElement;
@@ -415,11 +467,11 @@ export default function Home() {
   useEffect(() => {
     const savedCart = localStorage.getItem("kapruka_cart");
     if (savedCart) {
-      try { setCartItems(JSON.parse(savedCart)); } catch (e) {}
+      try { setCartItems(JSON.parse(savedCart)); } catch (e) { }
     }
     const savedMessages = localStorage.getItem("kapruka_messages_v2");
     if (savedMessages) {
-      try { setMessages(JSON.parse(savedMessages)); } catch (e) {}
+      try { setMessages(JSON.parse(savedMessages)); } catch (e) { }
     }
   }, []);
 
@@ -437,20 +489,7 @@ export default function Home() {
   };
 
   const addToCart = (item: any) => {
-    setCartItems(prev => {
-      const existing = prev.find(i => i.product_id === item.id);
-      if (existing) {
-        return prev.map(i => i.product_id === item.id ? { ...i, quantity: i.quantity + 1 } : i);
-      }
-      return [...prev, {
-        product_id: item.id,
-        product_name: item.name,
-        price: item.price || 0,
-        image: item.image || "",
-        quantity: 1
-      }];
-    });
-    setIsCartOpen(true);
+    handleSendMessage(`Please add product ID ${item.id} to my cart`, { hidden: true });
   };
 
   const removeFromCart = (productId: string) => {
@@ -468,7 +507,7 @@ export default function Home() {
   const handleCartCheckout = () => {
     if (cartItems.length === 0) return;
     setIsCartOpen(false);
-    setShowCheckoutModal(true);
+    handleSendMessage("I want to checkout. Ask me for recipient, delivery, and sender details before creating the order.");
   };
 
   const [isCheckoutLoading, setIsCheckoutLoading] = useState(false);
@@ -582,12 +621,18 @@ export default function Home() {
     localStorage.removeItem("kapruka_messages_v2");
   };
 
+  useEffect(() => {
+    const handleOpenCart = () => setIsCartOpen(true);
+    window.addEventListener('open-cart', handleOpenCart);
+    return () => window.removeEventListener('open-cart', handleOpenCart);
+  }, []);
+
   // Submit Message handler
-  const handleSendMessage = async (text: string) => {
-    if (!text.trim() || isLoading) return;
+  const handleSendMessage = async (text: string, options?: { hidden?: boolean }) => {
+    if (!text.trim()) return;
 
     // Add user message
-    const userMsg: Message = { role: "user", content: text };
+    const userMsg: Message = { role: "user", content: text, hidden: options?.hidden };
     const updatedMessages = [...messages, userMsg];
     setMessages(updatedMessages);
     setInputText("");
@@ -600,8 +645,15 @@ export default function Home() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          messages: updatedMessages,
+          messages: updatedMessages.map(m => ({
+            role: m.role,
+            content: m.content,
+            tool_calls: m.tool_calls,
+            tool_call_id: m.tool_call_id,
+            name: m.name
+          })),
           user_email: null,
+          cart: cartItems
         })
       });
 
@@ -613,6 +665,9 @@ export default function Home() {
       if (data.history && data.history.length > 0) {
         // Update entire history to capture AI messages and tool execution logs
         setMessages(data.history);
+      }
+      if (data.cart) {
+        setCartItems(data.cart);
       }
     } catch (error: any) {
       console.error(error);
@@ -635,10 +690,10 @@ export default function Home() {
         name: m.name,
         tool_call_id: m.tool_call_id
       }));
-      
-      historyUpToMessage.push({ 
-        role: "user", 
-        content: "Please provide up to 10 MORE different products for my previous request. DO NOT repeat any of the products you just listed." 
+
+      historyUpToMessage.push({
+        role: "user",
+        content: "Please provide up to 10 MORE different products for my previous request. DO NOT repeat any of the products you just listed."
       });
 
       const response = await fetch("http://127.0.0.1:8000/api/chat", {
@@ -655,18 +710,32 @@ export default function Home() {
       }
 
       const data = await response.json();
-      if (data.history && data.history.length > 0) {
-        const lastMsg = data.history[data.history.length - 1];
-        if (lastMsg && lastMsg.role === "assistant" && lastMsg.content) {
-          setMessages(prev => {
-            const newMsgs = [...prev];
+      if (data.history && data.history.length > historyUpToMessage.length) {
+        const newlyAdded = data.history.slice(historyUpToMessage.length);
+
+        setMessages(prev => {
+          const newMsgs = [...prev];
+          let mergedContent = "";
+
+          newlyAdded.forEach((msg: any) => {
+            if (msg.role === "assistant" && msg.content && !msg.tool_calls) {
+              mergedContent += "\n\n" + msg.content;
+            } else {
+              // Push the new tool or intermediate messages so getProductCache can find them
+              // We set hidden to true so they don't render at the bottom of the chat
+              newMsgs.push({ ...msg, hidden: true });
+            }
+          });
+
+          if (mergedContent) {
             newMsgs[msgIndex] = {
               ...newMsgs[msgIndex],
-              content: newMsgs[msgIndex].content + "\n\n" + lastMsg.content
+              content: newMsgs[msgIndex].content + mergedContent
             };
-            return newMsgs;
-          });
-        }
+          }
+
+          return newMsgs;
+        });
       }
     } catch (error) {
       console.error("Failed to load more products:", error);
@@ -821,7 +890,7 @@ export default function Home() {
                     }}
                   >
                     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
+                      <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
                     </svg>
                   </button>
                   <input
@@ -862,8 +931,8 @@ export default function Home() {
                     id="send-msg-btn-empty"
                   >
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
-                      <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
+                      <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z" />
+                      <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z" />
                     </svg>
                   </button>
                 </div>
@@ -910,496 +979,582 @@ export default function Home() {
             <>
 
 
-          {/* Messages Feed Container */}
-          <div style={{ flex: 1, overflowY: "auto", padding: "24px", display: "flex", flexDirection: "column", alignItems: "center" }}>
-            <div style={{ width: "100%", maxWidth: "800px", display: "flex", flexDirection: "column", gap: "20px" }}>
+              {/* Messages Feed Container */}
+              <div style={{ flex: 1, overflowY: "auto", overflowX: "hidden", padding: "24px", display: "flex", flexDirection: "column", alignItems: "center" }}>
+                <div style={{ width: "100%", maxWidth: "800px", display: "flex", flexDirection: "column", gap: "20px" }}>
 
-            {/* Quick-action chips removed from here because they moved to the empty state screen */}
+                  {/* Quick-action chips removed from here because they moved to the empty state screen */}
 
-            {(() => {
-              // Deduplicate: collapse consecutive assistant messages — keep only the last one
-              const deduped: typeof messages = [];
-              messages.forEach((msg, i) => {
-                if (
-                  msg.role === "assistant" &&
-                  i + 1 < messages.length &&
-                  messages[i + 1].role === "assistant"
-                ) {
-                  return; // skip — a newer assistant message follows
-                }
-                if (msg.role !== "system") deduped.push(msg);
-              });
-              return deduped;
-            })()
-              .map((msg, index) => {
-                const isUser = msg.role === "user";
-                const isTool = msg.role === "tool";
+                  {(() => {
+                    // Deduplicate: collapse consecutive assistant messages — keep only the last one
+                    const deduped: typeof messages = [];
+                    messages.forEach((msg, i) => {
+                      if (
+                        msg.role === "assistant" &&
+                        i + 1 < messages.length &&
+                        messages[i + 1].role === "assistant"
+                      ) {
+                        return; // skip — a newer assistant message follows
+                      }
+                      if (msg.role !== "system") deduped.push(msg);
+                    });
+                    return deduped;
+                  })()
+                    .map((msg, index) => {
+                      if (msg.hidden) return null;
+                      const isUser = msg.role === "user";
+                      const isTool = msg.role === "tool";
 
-                // Get the product cache from history
-                const cache = getProductCache(messages);
+                      // Get the product cache from history
+                      const cache = getProductCache(messages);
 
-                if (isTool) {
-                  // Render tool messages as clean, compact system badges instead of full grids
-                  if (msg.name === "search_products") {
-                    return (
-                      <div key={index} className="animate-fade-in" style={{ alignSelf: "flex-start", margin: "4px 4px" }}>
-                        <span style={{ fontSize: "0.8rem", color: "var(--text-muted)", background: "rgba(255, 255, 255, 0.05)", padding: "6px 12px", borderRadius: "12px", border: "1px solid var(--glass-border)", display: "inline-flex", alignItems: "center", gap: "6px" }}>
-                          <span style={{ color: "var(--brand-yellow)" }}>🔍</span> Searched Kapruka products
-                        </span>
-                      </div>
-                    );
-                  }
+                      if (isTool) {
+                        // Render tool messages as clean, compact system badges instead of full grids
+                        if (msg.name === "search_products") {
+                          return (
+                            <div key={index} className="animate-fade-in" style={{ alignSelf: "flex-start", margin: "2px 8px" }}>
+                              <span style={{ fontSize: "0.7rem", color: "#9ca3af", fontFamily: "monospace", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                                Searched Kapruka products
+                              </span>
+                            </div>
+                          );
+                        }
 
-                  if (msg.name === "get_product") {
-                    return (
-                      <div key={index} className="animate-fade-in" style={{ alignSelf: "flex-start", margin: "4px 4px" }}>
-                        <span style={{ fontSize: "0.8rem", color: "var(--text-muted)", background: "rgba(255, 255, 255, 0.05)", padding: "6px 12px", borderRadius: "12px", border: "1px solid var(--glass-border)", display: "inline-flex", alignItems: "center", gap: "6px" }}>
-                          <span style={{ color: "var(--brand-yellow)" }}>📦</span> Retrieved product details
-                        </span>
-                      </div>
-                    );
-                  }
+                        if (msg.name === "get_product") {
+                          return (
+                            <div key={index} className="animate-fade-in" style={{ alignSelf: "flex-start", margin: "2px 8px" }}>
+                              <span style={{ fontSize: "0.7rem", color: "#9ca3af", fontFamily: "monospace", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                                Retrieved product details
+                              </span>
+                            </div>
+                          );
+                        }
 
-                  return null; // Skip rendering other tool calls to keep chat clean
-                }
+                        return null; // Skip rendering other tool calls to keep chat clean
+                      }
 
-                // Render Normal messages
-                if (!msg.content) return null; // Skip empty tool triggers
+                      // Render Normal messages
+                      if (!msg.content) return null; // Skip empty tool triggers
 
-                if (isUser) {
-                  return (
-                    <div
-                      key={index}
-                      className="animate-fade-in"
-                      style={{
-                        alignSelf: "flex-end",
-                        maxWidth: "75%",
-                        display: "flex",
-                        flexDirection: "row",
-                        alignItems: "flex-end",
-                        gap: "10px"
-                      }}
-                    >
-                      <div
-                        style={{
-                          background: "var(--brand-purple-light)",
-                          padding: "14px 18px",
-                          borderRadius: "16px 16px 4px 16px",
-                          color: "#fff",
-                          fontSize: "0.95rem",
-                          lineHeight: 1.5,
-                          whiteSpace: "pre-wrap",
-                          border: "none"
-                        }}
-                      >
-                        {renderFormattedText(msg.content)}
-                      </div>
-                    </div>
-                  );
-                }
-
-                // Assistant Message rendering
-                const extractedIds = extractProductIds(msg.content, cache);
-                const cleanedContent = cleanAssistantText(msg.content, extractedIds);
-                const checkoutInfo = extractCheckoutInfo(msg.content);
-
-                return (
-                  <div
-                    key={index}
-                    className="animate-fade-in"
-                    style={{
-                      alignSelf: "flex-start",
-                      maxWidth: "100%",
-                      display: "flex",
-                      flexDirection: "row",
-                      alignItems: "flex-end",
-                      gap: "10px",
-                      width: "100%"
-                    }}
-                  >
-                    <img src="/agent_photo.png" alt="Kapruka Agent" style={{ width: 36, height: 36, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }} />
-                    <div style={{ display: "flex", flexDirection: "column", gap: "8px", flex: 1, minWidth: 0 }}>
-
-                      {/* Render clean text response if there is any remaining content */}
-                      {cleanedContent && (
-                        <>
+                      if (isUser) {
+                        return (
                           <div
-                            className="glass-panel"
+                            key={index}
+                            className="animate-fade-in"
                             style={{
-                              background: "#ffffff",
-                              padding: "14px 18px",
-                              borderRadius: "16px 16px 16px 4px",
-                              color: "#333",
-                              fontSize: "0.95rem",
-                              lineHeight: 1.5,
-                              whiteSpace: "pre-wrap",
-                              border: "1px solid var(--glass-border)",
-                              marginBottom: extractedIds.length > 0 ? "12px" : "0",
-                              maxWidth: "88%"
+                              alignSelf: "flex-end",
+                              maxWidth: "75%",
+                              display: "flex",
+                              flexDirection: "row",
+                              alignItems: "flex-end",
+                              gap: "10px"
                             }}
                           >
-                            {renderFormattedText(cleanedContent)}
-                          </div>
-                          
-                          {/* Show a checkout button if the assistant mentions checkout */}
-                          {!checkoutInfo && /(?:checkout|check out|place an order|proceed to order)/i.test(cleanedContent) && (
-                            <div style={{ marginTop: "8px", marginBottom: "8px" }}>
-                              <button
-                                onClick={handleCartCheckout}
-                                className="glow-button"
-                                style={{
-                                  background: "var(--brand-yellow)",
-                                  color: "var(--brand-purple-dark)",
-                                  padding: "10px 18px",
-                                  borderRadius: "10px",
-                                  fontWeight: 800,
-                                  fontSize: "0.95rem",
-                                  border: "none",
-                                  cursor: "pointer",
-                                  display: "flex",
-                                  alignItems: "center",
-                                  gap: "6px"
-                                }}
-                              >
-                                <span>🛒</span> Open Checkout Form
-                              </button>
-                            </div>
-                          )}
-                        </>
-                      )}
-
-                      {/* Order Confirmation Card */}
-                      {checkoutInfo && (
-                        <div className="glass-panel animate-fade-in" style={{
-                          padding: "20px 24px",
-                          borderRadius: "16px",
-                          border: "1px solid rgba(245, 158, 11, 0.35)",
-                          background: "rgba(34, 19, 69, 0.6)",
-                          maxWidth: "420px",
-                          marginTop: "8px"
-                        }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "16px" }}>
-                            <span style={{ fontSize: "1.4rem" }}>🧾</span>
-                            <span style={{ fontWeight: 800, fontSize: "1rem", color: "#fff" }}>Order Ready for Checkout</span>
-                          </div>
-
-                          {checkoutInfo.ref && (
-                            <div style={{ marginBottom: "10px" }}>
-                              <div style={{ fontSize: "0.72rem", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "1px", fontWeight: 700 }}>Order Reference</div>
-                              <div style={{ fontFamily: "monospace", color: "var(--brand-yellow)", fontSize: "0.95rem", fontWeight: 700, marginTop: "2px" }}>{checkoutInfo.ref}</div>
-                            </div>
-                          )}
-
-                          {checkoutInfo.expires && (
-                            <div style={{ marginBottom: "16px" }}>
-                              <div style={{ fontSize: "0.72rem", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "1px", fontWeight: 700 }}>Expires At</div>
-                              <div style={{ color: "#e2d9f3", fontSize: "0.85rem", marginTop: "2px" }}>{checkoutInfo.expires}</div>
-                            </div>
-                          )}
-
-                          <div style={{ fontSize: "0.8rem", color: "var(--text-muted)", marginBottom: "16px", lineHeight: 1.5 }}>
-                            Note: This reference is temporary. Your final order number will be shown after payment is completed on Kapruka. Please check your email for the final tracking number. If you want to track your order, simply paste that number right here into the chat!
-                          </div>
-
-                          {checkoutInfo.url && (
-                            <button
-                              onClick={() => setPaymentUrl(checkoutInfo.url)}
-                              className="glow-button"
+                            <div
                               style={{
-                                width: "100%",
-                                display: "block",
-                                background: "var(--brand-yellow)",
-                                color: "var(--brand-purple-dark)",
-                                padding: "12px 20px",
-                                borderRadius: "10px",
-                                fontWeight: 800,
+                                background: "var(--brand-purple-light)",
+                                padding: "14px 18px",
+                                borderRadius: "16px 16px 4px 16px",
+                                color: "#fff",
                                 fontSize: "0.95rem",
-                                textAlign: "center",
-                                border: "none",
-                                cursor: "pointer"
+                                lineHeight: 1.5,
+                                whiteSpace: "pre-wrap",
+                                wordBreak: "break-word",
+                                overflowWrap: "anywhere",
+                                border: "none"
                               }}
                             >
-                              Proceed to Checkout
-                            </button>
-                          )}
-                        </div>
-                      )}
+                              {renderFormattedText(msg.content)}
+                            </div>
+                          </div>
+                        );
+                      }
 
-                      {/* Render product card(s) under the message */}
-                      {!checkoutInfo && extractedIds.length > 0 && (
-                        <div style={{ width: "100%", marginTop: "4px" }}>
-                          {extractedIds.length === 1 ? (
-                            // Detailed layout for single product
-                            (() => {
-                              const item = cache[extractedIds[0]];
-                              return (
-                                <div className="glass-panel animate-fade-in" style={{ padding: "20px", display: "flex", gap: "20px", borderRadius: "16px", flexWrap: "wrap", maxWidth: "90%" }}>
-                                  {item.image && (
-                                    <img
-                                      src={item.image}
-                                      alt={item.name}
-                                      style={{ width: "180px", height: "180px", objectFit: "contain", borderRadius: "12px", background: "#fff", flexShrink: 0 }}
-                                    />
-                                  )}
-                                  <div style={{ flex: 1, minWidth: "220px", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
-                                    <div>
-                                      <h2 style={{ fontSize: "1.2rem", fontWeight: 800, color: "#fff", marginBottom: "8px" }}>{item.name}</h2>
-                                      <div style={{ display: "flex", gap: "10px", alignItems: "center", marginBottom: "12px" }}>
-                                        <span style={{ color: "var(--brand-yellow)", fontWeight: 800, fontSize: "1.2rem" }}>
-                                          {item.price ? `${item.price.toLocaleString()} LKR` : "Price N/A"}
-                                        </span>
-                                        <span style={{ fontSize: "0.75rem", color: item.inStock ? "#10b981" : "#ef4444", background: item.inStock ? "rgba(16, 185, 129, 0.15)" : "rgba(239, 68, 68, 0.15)", padding: "2px 8px", borderRadius: "6px" }}>
-                                          {item.inStock ? "In Stock" : "Out of Stock"}
-                                        </span>
-                                      </div>
-                                      {item.description && (
-                                        <p style={{ color: "var(--text-muted)", fontSize: "0.85rem", lineHeight: 1.5, maxHeight: "100px", overflowY: "auto", paddingRight: "6px" }}>
-                                          {item.description}
-                                        </p>
-                                      )}
-                                      <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: "8px", fontFamily: "monospace" }}>
-                                        Product ID: {item.id}
-                                      </div>
-                                    </div>
-                                    <div style={{ marginTop: "16px", display: "flex", gap: "10px", flexWrap: "wrap" }}>
-                                      <button
-                                        onClick={() => addToCart(item)}
-                                        className="glow-button"
-                                        style={{ background: "var(--brand-yellow)", color: "var(--brand-purple-dark)", border: "none", padding: "8px 16px", borderRadius: "8px", fontWeight: 700, fontSize: "0.85rem", cursor: "pointer" }}
-                                      >
-                                        Add to Cart
-                                      </button>
+                      // Assistant Message rendering
+                      const extractedIds = extractProductIds(msg.content, cache);
+                      const cleanedContent = cleanAssistantText(msg.content, extractedIds);
+                      const checkoutInfo = extractCheckoutInfo(msg.content);
 
-                                      {item.url && (
-                                        <a
-                                          href={item.url}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          style={{
-                                            background: "rgba(255,255,255,0.07)",
-                                            color: "#e2d9f3",
-                                            padding: "8px 16px",
-                                            borderRadius: "8px",
-                                            fontWeight: 600,
-                                            fontSize: "0.85rem",
-                                            display: "inline-flex",
-                                            alignItems: "center",
-                                            textDecoration: "none",
-                                            border: "1px solid rgba(255,255,255,0.15)"
-                                          }}
-                                        >
-                                          View on Kapruka
-                                        </a>
-                                      )}
-                                    </div>
-                                  </div>
-                                </div>
-                              );
-                            })()
-                          ) : (
-                            // Horizontal layout for multiple products
-                            <div style={{ 
-                                marginTop: "16px", 
-                                width: "100vw",
-                                position: "relative",
-                                left: "50%",
-                                right: "50%",
-                                marginLeft: "-50vw",
-                                marginRight: "-50vw"
-                              }}>
-                              {/* Header */}
-                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px", paddingLeft: "max(70px, calc(50vw - 400px + 46px))", paddingRight: "max(24px, calc(50vw - 400px + 24px))" }}>
-                                <div style={{ fontSize: "0.8rem", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "1px", fontWeight: 700 }}>
-                                  {extractedIds.length} PRODUCTS
-                                </div>
-                                <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                                  <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", fontFamily: "monospace", background: "rgba(255,255,255,0.05)", padding: "4px 8px", borderRadius: "6px" }}>Shift + scroll</span>
-                                  <div style={{ display: "flex", gap: "8px" }}>
-                                    <button
-                                      onClick={() => document.getElementById(`carousel-${index}`)?.scrollBy({ left: -260, behavior: "smooth" })}
-                                      className="scroll-arrow-btn"
-                                      style={{ position: "relative", top: "auto", transform: "none", width: "32px", height: "32px" }}
-                                    >
-                                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
-                                    </button>
-                                    <button
-                                      onClick={() => document.getElementById(`carousel-${index}`)?.scrollBy({ left: 260, behavior: "smooth" })}
-                                      className="scroll-arrow-btn"
-                                      style={{ position: "relative", top: "auto", transform: "none", width: "32px", height: "32px" }}
-                                    >
-                                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
-                                    </button>
-                                  </div>
-                                </div>
-                              </div>
-                              
-                              <div id={`carousel-${index}`} className="product-carousel" style={{ paddingLeft: "max(70px, calc(50vw - 400px + 46px))", paddingRight: "max(24px, calc(50vw - 400px + 24px))", boxSizing: "border-box" }}>
-                                {extractedIds.map((id, optIdx) => {
-                                  const item = cache[id];
-                                  return (
-                                    <div key={item.id} className="product-card-light animate-fade-in">
-                                      {item.image && (
-                                        <img
-                                          src={item.image}
-                                          alt={item.name}
-                                          style={{ width: "100%", height: "160px", objectFit: "contain", background: "#fff", marginBottom: "12px" }}
-                                        />
-                                      )}
-                                      <div>
-                                        <h3 style={{ fontSize: "0.95rem", fontWeight: 700, color: "#221345", height: "38px", display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "8px" }}>
-                                          <span style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{item.name}</span>
-                                          {item.url && (
-                                            <a href={item.url} target="_blank" rel="noopener noreferrer" style={{ color: "var(--text-muted)", flexShrink: 0 }}>
-                                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
-                                            </a>
-                                          )}
-                                        </h3>
-                                        <div style={{ color: "#111827", fontWeight: 800, fontSize: "1.05rem", marginTop: "12px", marginBottom: "16px" }}>
-                                          {item.price ? `${item.price.toLocaleString()} LKR` : "Price N/A"}
-                                        </div>
-                                      </div>
-                                      
-                                      <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-                                        <button
-                                          onClick={() => handleSendMessage(`Please retrieve details for product ${item.id}`)}
-                                          style={{ flex: 1, background: "rgba(57, 32, 97, 0.08)", color: "var(--brand-purple)", border: "none", padding: "8px 16px", borderRadius: "20px", fontWeight: 600, fontSize: "0.85rem", cursor: "pointer", display: "flex", justifyContent: "center", alignItems: "center", gap: "4px", transition: "all 0.2s" }}
-                                          onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(57, 32, 97, 0.15)"; }}
-                                          onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(57, 32, 97, 0.08)"; }}
-                                        >
-                                          Details <span style={{ fontSize: "0.7rem", marginTop: "2px" }}>❯</span>
-                                        </button>
-                                        <button
-                                          onClick={() => addToCart(item)}
-                                          style={{ background: "var(--brand-yellow)", color: "var(--brand-purple-dark)", border: "none", width: "36px", height: "36px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0, fontWeight: 700, fontSize: "1.2rem", transition: "all 0.2s", boxShadow: "0 2px 6px rgba(255,210,0,0.3)" }}
-                                          onMouseEnter={(e) => { e.currentTarget.style.transform = "scale(1.05)"; }}
-                                          onMouseLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
-                                          title="Add to Cart"
-                                        >
-                                          +
-                                        </button>
-                                      </div>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                              <div style={{ display: "flex", justifyContent: "center", marginTop: "12px" }}>
-                                <button
-                                  onClick={() => handleLoadMore(index)}
-                                  disabled={loadingMoreIds[index]}
+                      return (
+                        <div
+                          key={index}
+                          className="animate-fade-in"
+                          style={{
+                            alignSelf: "flex-start",
+                            maxWidth: "100%",
+                            display: "flex",
+                            flexDirection: "row",
+                            alignItems: "flex-end",
+                            gap: "10px",
+                            width: "100%"
+                          }}
+                        >
+                          <img src="/agent_photo.png" alt="Kapruka Agent" style={{ width: 36, height: 36, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }} />
+                          <div style={{ display: "flex", flexDirection: "column", gap: "8px", flex: 1, minWidth: 0 }}>
+
+                            {/* Render clean text response if there is any remaining content */}
+                            {cleanedContent && (
+                              <>
+                                <div
+                                  className="glass-panel"
                                   style={{
                                     background: "#ffffff",
-                                    border: "1px solid var(--brand-purple)",
-                                    color: "var(--brand-purple)",
-                                    fontWeight: 600,
-                                    padding: "8px 20px",
-                                    borderRadius: "20px",
-                                    fontSize: "0.85rem",
-                                    cursor: loadingMoreIds[index] ? "wait" : "pointer",
-                                    transition: "all 0.2s",
-                                    opacity: loadingMoreIds[index] ? 0.7 : 1
+                                    padding: "14px 18px",
+                                    borderRadius: "16px 16px 16px 4px",
+                                    color: "#333",
+                                    fontSize: "0.95rem",
+                                    lineHeight: 1.5,
+                                    whiteSpace: "pre-wrap",
+                                    wordBreak: "break-word",
+                                    overflowWrap: "anywhere",
+                                    border: "1px solid var(--glass-border)",
+                                    marginBottom: extractedIds.length > 0 ? "12px" : "0",
+                                    maxWidth: "88%"
                                   }}
-                                  onMouseEnter={(e) => { if (!loadingMoreIds[index]) e.currentTarget.style.background = "rgba(57, 32, 97, 0.05)"; }}
-                                  onMouseLeave={(e) => { if (!loadingMoreIds[index]) e.currentTarget.style.background = "#ffffff"; }}
                                 >
-                                  {loadingMoreIds[index] ? (
-                                    <span style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                                      <div className="typing-dot" style={{ width: "6px", height: "6px" }}></div>
-                                      <div className="typing-dot" style={{ width: "6px", height: "6px" }}></div>
-                                      <div className="typing-dot" style={{ width: "6px", height: "6px" }}></div>
-                                    </span>
-                                  ) : (
-                                    "Load more products"
-                                  )}
-                                </button>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
+                                  {renderFormattedText(cleanedContent)}
+                                </div>
 
-            {/* Chatbot Typing Loader */}
-            {isLoading && (
-              <div style={{ alignSelf: "flex-start", display: "flex", flexDirection: "column", gap: "4px" }}>
-                <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginLeft: "4px" }}>KAPRUKA AGENT</span>
-                <div className="glass-panel" style={{ padding: "14px 20px", borderRadius: "16px 16px 16px 4px", display: "flex", gap: "6px", alignItems: "center" }}>
-                  <div className="typing-dot"></div>
-                  <div className="typing-dot"></div>
-                  <div className="typing-dot"></div>
+
+                              </>
+                            )}
+
+                            {/* Order Confirmation Card */}
+                            {checkoutInfo && (
+                              <div className="glass-panel animate-fade-in" style={{
+                                padding: "20px",
+                                borderRadius: "16px",
+                                background: "#3b2667",
+                                maxWidth: "420px",
+                                marginTop: "8px",
+                                boxShadow: "0 8px 32px rgba(0, 0, 0, 0.2)"
+                              }}>
+                                <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "20px" }}>
+                                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                                  <span style={{ fontWeight: 700, fontSize: "1.1rem", color: "#fff" }}>Order Summary</span>
+                                </div>
+
+                                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "12px", color: "#e2d9f3", fontSize: "0.95rem" }}>
+                                  <span>Ref</span>
+                                  <span style={{ fontFamily: "monospace", letterSpacing: "0.5px" }}>{checkoutInfo.ref || "N/A"}</span>
+                                </div>
+
+                                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "20px", color: "#e2d9f3", fontSize: "0.95rem" }}>
+                                  <span>Items</span>
+                                  <span>{checkoutInfo.items || "N/A"}</span>
+                                </div>
+
+                                <div style={{ height: "1px", background: "rgba(255, 255, 255, 0.15)", marginBottom: "20px" }}></div>
+
+                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
+                                  <span style={{ color: "#fff", fontWeight: 700, fontSize: "1.2rem" }}>Total</span>
+                                  <span style={{ color: "#fff", fontWeight: 800, fontSize: "1.2rem" }}>{checkoutInfo.total || "N/A"}</span>
+                                </div>
+
+                                {checkoutInfo.url && (
+                                  <button
+                                    onClick={() => setPaymentUrl(checkoutInfo.url)}
+                                    className="glow-button"
+                                    style={{
+                                      width: "100%",
+                                      display: "block",
+                                      background: "#facc15",
+                                      color: "#1e1b4b",
+                                      padding: "14px 20px",
+                                      borderRadius: "10px",
+                                      fontWeight: 700,
+                                      fontSize: "1.05rem",
+                                      textAlign: "center",
+                                      border: "none",
+                                      cursor: "pointer",
+                                      marginBottom: "16px"
+                                    }}
+                                  >
+                                    Secure Checkout
+                                  </button>
+                                )}
+
+                                <div style={{
+                                  border: "1px solid rgba(255, 255, 255, 0.15)",
+                                  borderRadius: "12px",
+                                  padding: "16px",
+                                  background: "rgba(255, 255, 255, 0.03)"
+                                }}>
+                                  <div style={{ display: "flex", gap: "10px", marginBottom: "16px", color: "#e2d9f3", fontSize: "0.9rem", alignItems: "flex-start" }}>
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: "2px" }}><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>
+                                    <span>Save this delivery address for next time?</span>
+                                  </div>
+                                  <div style={{ display: "flex", gap: "12px" }}>
+                                    <button style={{
+                                      flex: 1,
+                                      background: "#facc15",
+                                      color: "#1e1b4b",
+                                      border: "none",
+                                      padding: "10px",
+                                      borderRadius: "8px",
+                                      fontWeight: 600,
+                                      fontSize: "0.9rem",
+                                      cursor: "pointer"
+                                    }}>
+                                      Yes, save it
+                                    </button>
+                                    <button style={{
+                                      flex: 1,
+                                      background: "transparent",
+                                      color: "#fff",
+                                      border: "1px solid rgba(255, 255, 255, 0.3)",
+                                      padding: "10px",
+                                      borderRadius: "8px",
+                                      fontWeight: 600,
+                                      fontSize: "0.9rem",
+                                      cursor: "pointer"
+                                    }}>
+                                      Not now
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Render product card(s) under the message */}
+                            {!checkoutInfo && extractedIds.length > 0 && (
+                              <div style={{ width: "100%", marginTop: "4px" }}>
+                                {extractedIds.length === 1 ? (
+                                  // Detailed layout for single product
+                                  (() => {
+                                    const item = cache[extractedIds[0]];
+                                    return (
+                                      <div className="animate-fade-in" style={{ padding: "0", background: "#ffffff", borderRadius: "16px", border: "1px solid #e5e7eb", maxWidth: "420px", overflow: "hidden", boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.05)" }}>
+                                        {/* Main Image */}
+                                        {item.image && (
+                                          <div style={{ padding: "16px", background: "#f8f9fa", display: "flex", justifyContent: "center" }}>
+                                            <img
+                                              src={item.image}
+                                              alt={item.name}
+                                              style={{ width: "100%", height: "auto", maxHeight: "250px", objectFit: "contain", borderRadius: "12px", background: "#fff", border: "1px solid #e5e7eb" }}
+                                            />
+                                          </div>
+                                        )}
+
+                                        {/* Thumbnails */}
+                                        {item.thumbnails && item.thumbnails.length > 1 && (
+                                          <div style={{ display: "flex", gap: "8px", padding: "0 16px", marginTop: "12px" }}>
+                                            {item.thumbnails.slice(0, 4).map((thumb, idx) => (
+                                              <div key={idx} style={{ border: idx === 0 ? "2px solid #5b21b6" : "1px solid #e5e7eb", borderRadius: "8px", overflow: "hidden", width: "48px", height: "48px" }}>
+                                                <img src={thumb} alt="thumbnail" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                                              </div>
+                                            ))}
+                                          </div>
+                                        )}
+
+                                        <div style={{ padding: "16px" }}>
+                                          {/* Tags */}
+                                          <div style={{ display: "flex", gap: "8px", alignItems: "center", marginBottom: "12px", flexWrap: "wrap" }}>
+                                            <span style={{ fontSize: "0.7rem", color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.5px", fontWeight: 700 }}>
+                                              {item.subtype || item.type || "PRODUCT"}
+                                            </span>
+                                            <span style={{ fontSize: "0.7rem", color: item.stock_level === "low_stock" ? "#d97706" : item.inStock ? "#059669" : "#dc2626", background: item.stock_level === "low_stock" ? "#fef3c7" : item.inStock ? "#d1fae5" : "#fee2e2", padding: "2px 8px", borderRadius: "12px", fontWeight: 600 }}>
+                                              {item.stock_level === "low_stock" ? "Low stock" : item.inStock ? "In Stock" : "Out of Stock"}
+                                            </span>
+                                          </div>
+
+                                          {/* Title */}
+                                          <div style={{ display: "flex", alignItems: "flex-start", gap: "8px", marginBottom: "4px" }}>
+                                            <h2 style={{ fontSize: "1.1rem", fontWeight: 800, color: "#4c1d95", lineHeight: 1.3 }}>{item.name}</h2>
+                                            {item.url && (
+                                              <a href={item.url} target="_blank" rel="noreferrer" style={{ color: "#8b5cf6", marginTop: "2px", flexShrink: 0 }}>
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+                                              </a>
+                                            )}
+                                          </div>
+
+                                          {/* ID */}
+                                          <div style={{ fontSize: "0.75rem", color: "#9ca3af", marginBottom: "16px", fontFamily: "monospace" }}>
+                                            {item.id}
+                                          </div>
+
+                                          {/* Price */}
+                                          <div style={{ color: "#111827", fontWeight: 800, fontSize: "1.25rem", marginBottom: "12px" }}>
+                                            {item.price ? `LKR ${item.price.toLocaleString()}` : "Price N/A"}
+                                          </div>
+
+                                          {/* Description */}
+                                          {item.description && (
+                                            <div style={{ color: "#6b7280", fontSize: "0.85rem", lineHeight: 1.5, marginBottom: "20px" }}>
+                                              {item.description.length > 250 ? item.description.substring(0, 250) + "..." : item.description}
+                                            </div>
+                                          )}
+
+                                          {/* Variants block */}
+                                          <div style={{ marginBottom: "20px" }}>
+                                            <div style={{ fontSize: "0.7rem", color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.5px", fontWeight: 700, marginBottom: "8px" }}>VARIANTS</div>
+                                            <div style={{ border: "1px solid #e5e7eb", borderRadius: "8px", padding: "12px", background: "#f9fafb" }}>
+                                              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
+                                                <span style={{ fontSize: "0.85rem", fontWeight: 600, color: "#111827" }}>Default</span>
+                                                <span style={{ fontSize: "0.85rem", fontWeight: 600, color: "#111827" }}>{item.price ? `LKR ${item.price.toLocaleString()}` : ""}</span>
+                                              </div>
+                                              <div style={{ display: "flex", justifyContent: "space-between" }}>
+                                                <span style={{ fontSize: "0.75rem", color: "#6b7280", fontFamily: "monospace" }}>{item.id}</span>
+                                                <span style={{ fontSize: "0.75rem", color: item.stock_level === "low_stock" ? "#d97706" : "#6b7280" }}>{item.stock_level === "low_stock" ? "Low stock" : "In stock"}</span>
+                                              </div>
+                                              <div style={{ fontSize: "0.75rem", color: "#6b7280", marginTop: "4px" }}>Weight: {item.weight !== undefined ? item.weight : "0"}</div>
+                                            </div>
+                                          </div>
+
+                                          {/* Details block */}
+                                          <div style={{ marginBottom: "20px" }}>
+                                            <div style={{ fontSize: "0.7rem", color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.5px", fontWeight: 700, marginBottom: "8px" }}>DETAILS</div>
+                                            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                                              <div style={{ display: "flex", fontSize: "0.85rem" }}><div style={{ width: "100px", color: "#9ca3af" }}>Type</div><div style={{ color: "#374151" }}>{item.type || "specialGifts"}</div></div>
+                                              <div style={{ display: "flex", fontSize: "0.85rem" }}><div style={{ width: "100px", color: "#9ca3af" }}>Subtype</div><div style={{ color: "#374151" }}>{item.subtype || "Product"}</div></div>
+                                              <div style={{ display: "flex", fontSize: "0.85rem" }}><div style={{ width: "100px", color: "#9ca3af" }}>Weight</div><div style={{ color: "#374151" }}>{item.weight !== undefined ? item.weight : "0"}</div></div>
+                                              <div style={{ display: "flex", fontSize: "0.85rem" }}><div style={{ width: "100px", color: "#9ca3af" }}>Vendor</div><div style={{ color: "#374151" }}>{item.vendor || "Kapruka"}</div></div>
+                                            </div>
+                                          </div>
+
+                                          {/* Shipping block */}
+                                          <div style={{ border: "1px solid #e5e7eb", borderRadius: "8px", padding: "12px", marginBottom: "20px", display: "flex", alignItems: "flex-start", gap: "12px" }}>
+                                            <div style={{ color: "#4c1d95", marginTop: "2px" }}>
+                                              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>
+                                            </div>
+                                            <div style={{ flex: 1 }}>
+                                              <div style={{ fontSize: "0.85rem", fontWeight: 700, color: "#111827", marginBottom: "4px" }}>Shipping</div>
+                                              <div style={{ fontSize: "0.75rem", color: "#6b7280" }}>Ships from LK</div>
+                                              <div style={{ fontSize: "0.75rem", color: "#6b7280" }}>International delivery available</div>
+                                            </div>
+                                            <div style={{ color: "#d1d5db" }}>
+                                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                                            </div>
+                                          </div>
+
+                                          {/* Actions */}
+                                          <div style={{ display: "flex", gap: "12px", marginTop: "8px" }}>
+                                            <button
+                                              onClick={() => addToCart(item)}
+                                              style={{ flex: 1, background: "#4c1d95", color: "#ffffff", border: "none", padding: "10px", borderRadius: "8px", fontWeight: 600, fontSize: "0.9rem", cursor: "pointer", display: "flex", justifyContent: "center", alignItems: "center" }}
+                                            >
+                                              Add to Cart
+                                            </button>
+
+                                            {item.url && (
+                                              <a
+                                                href={item.url}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                style={{ flex: 1, background: "#ffffff", color: "#4c1d95", border: "1px solid #e5e7eb", padding: "10px", borderRadius: "8px", fontWeight: 600, fontSize: "0.9rem", textDecoration: "none", display: "flex", justifyContent: "center", alignItems: "center", gap: "6px" }}
+                                              >
+                                                View on Kapruka <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+                                              </a>
+                                            )}
+                                          </div>
+                                        </div>
+                                      </div>
+                                    );
+                                  })()
+                                ) : (
+                                  // Horizontal layout for multiple products
+                                  <div style={{
+                                    marginTop: "16px",
+                                    width: "100vw",
+                                    position: "relative",
+                                    left: "50%",
+                                    right: "50%",
+                                    marginLeft: "-50vw",
+                                    marginRight: "-50vw"
+                                  }}>
+                                    {/* Header */}
+                                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px", paddingLeft: "max(70px, calc(50vw - 400px + 46px))", paddingRight: "max(24px, calc(50vw - 400px + 24px))" }}>
+                                      <div style={{ fontSize: "0.8rem", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "1px", fontWeight: 700 }}>
+                                        {extractedIds.length} PRODUCTS
+                                      </div>
+                                      <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                                        <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", fontFamily: "monospace", background: "rgba(255,255,255,0.05)", padding: "4px 8px", borderRadius: "6px" }}>Shift + scroll</span>
+                                        <div style={{ display: "flex", gap: "8px" }}>
+                                          <button
+                                            onClick={() => document.getElementById(`carousel-${index}`)?.scrollBy({ left: -260, behavior: "smooth" })}
+                                            className="scroll-arrow-btn"
+                                            style={{ position: "relative", top: "auto", transform: "none", width: "32px", height: "32px" }}
+                                          >
+                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                                          </button>
+                                          <button
+                                            onClick={() => document.getElementById(`carousel-${index}`)?.scrollBy({ left: 260, behavior: "smooth" })}
+                                            className="scroll-arrow-btn"
+                                            style={{ position: "relative", top: "auto", transform: "none", width: "32px", height: "32px" }}
+                                          >
+                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                                          </button>
+                                        </div>
+                                      </div>
+                                    </div>
+
+                                    <div id={`carousel-${index}`} className="product-carousel" style={{ paddingLeft: "max(70px, calc(50vw - 400px + 46px))", paddingRight: "max(24px, calc(50vw - 400px + 24px))", boxSizing: "border-box" }}>
+                                      {extractedIds.map((id, optIdx) => {
+                                        const item = cache[id];
+                                        return (
+                                          <div key={item.id} className="product-card-light animate-fade-in">
+                                            {item.image && (
+                                              <img
+                                                src={item.image}
+                                                alt={item.name}
+                                                style={{ width: "100%", height: "160px", objectFit: "contain", background: "#fff", marginBottom: "12px" }}
+                                              />
+                                            )}
+                                            <div>
+                                              <h3 style={{ fontSize: "0.95rem", fontWeight: 700, color: "#221345", height: "38px", display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "8px" }}>
+                                                <span style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{item.name}</span>
+                                                {item.url && (
+                                                  <a href={item.url} target="_blank" rel="noopener noreferrer" style={{ color: "var(--text-muted)", flexShrink: 0 }}>
+                                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+                                                  </a>
+                                                )}
+                                              </h3>
+                                              <div style={{ color: "#111827", fontWeight: 800, fontSize: "1.05rem", marginTop: "12px", marginBottom: "16px" }}>
+                                                {item.price ? `${item.price.toLocaleString()} LKR` : "Price N/A"}
+                                              </div>
+                                            </div>
+
+                                            <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+                                              <button
+                                                onClick={() => handleSendMessage(`Please retrieve details for product ${item.id}`)}
+                                                style={{ flex: 1, background: "rgba(57, 32, 97, 0.08)", color: "var(--brand-purple)", border: "none", padding: "8px 16px", borderRadius: "20px", fontWeight: 600, fontSize: "0.85rem", cursor: "pointer", display: "flex", justifyContent: "center", alignItems: "center", gap: "4px", transition: "all 0.2s" }}
+                                                onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(57, 32, 97, 0.15)"; }}
+                                                onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(57, 32, 97, 0.08)"; }}
+                                              >
+                                                Details <span style={{ fontSize: "0.7rem", marginTop: "2px" }}>❯</span>
+                                              </button>
+                                              <button
+                                                onClick={() => addToCart(item)}
+                                                style={{ background: "var(--brand-yellow)", color: "var(--brand-purple-dark)", border: "none", width: "36px", height: "36px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0, fontWeight: 700, fontSize: "1.2rem", transition: "all 0.2s", boxShadow: "0 2px 6px rgba(255,210,0,0.3)" }}
+                                                onMouseEnter={(e) => { e.currentTarget.style.transform = "scale(1.05)"; }}
+                                                onMouseLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
+                                                title="Add to Cart"
+                                              >
+                                                +
+                                              </button>
+                                            </div>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                    <div style={{ display: "flex", justifyContent: "center", marginTop: "12px" }}>
+                                      <button
+                                        onClick={() => handleLoadMore(index)}
+                                        disabled={loadingMoreIds[index]}
+                                        style={{
+                                          background: "#ffffff",
+                                          border: "1px solid var(--brand-purple)",
+                                          color: "var(--brand-purple)",
+                                          fontWeight: 600,
+                                          padding: "8px 20px",
+                                          borderRadius: "20px",
+                                          fontSize: "0.85rem",
+                                          cursor: loadingMoreIds[index] ? "wait" : "pointer",
+                                          transition: "all 0.2s",
+                                          opacity: loadingMoreIds[index] ? 0.7 : 1
+                                        }}
+                                        onMouseEnter={(e) => { if (!loadingMoreIds[index]) e.currentTarget.style.background = "rgba(57, 32, 97, 0.05)"; }}
+                                        onMouseLeave={(e) => { if (!loadingMoreIds[index]) e.currentTarget.style.background = "#ffffff"; }}
+                                      >
+                                        {loadingMoreIds[index] ? (
+                                          <span style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                                            <div className="typing-dot" style={{ width: "6px", height: "6px" }}></div>
+                                            <div className="typing-dot" style={{ width: "6px", height: "6px" }}></div>
+                                            <div className="typing-dot" style={{ width: "6px", height: "6px" }}></div>
+                                          </span>
+                                        ) : (
+                                          "Load more products"
+                                        )}
+                                      </button>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+
+                  {/* Chatbot Typing Loader */}
+                  {isLoading && (
+                    <div style={{ alignSelf: "flex-start", display: "flex", flexDirection: "column", gap: "4px" }}>
+                      <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginLeft: "4px" }}>KAPRUKA AGENT</span>
+                      <div className="glass-panel" style={{ padding: "14px 20px", borderRadius: "16px 16px 16px 4px", display: "flex", gap: "6px", alignItems: "center" }}>
+                        <div className="typing-dot"></div>
+                        <div className="typing-dot"></div>
+                        <div className="typing-dot"></div>
+                      </div>
+                    </div>
+                  )}
+
+                  <div ref={messagesEndRef} />
                 </div>
               </div>
-            )}
 
-            <div ref={messagesEndRef} />
-            </div>
-          </div>
-
-          {/* Interactive Chat Input Bar */}
-          <div style={{ padding: "20px 24px", display: "flex", justifyContent: "center" }}>
-            <div style={{ display: "flex", gap: "12px", position: "relative", alignItems: "center", background: "#fff", padding: "8px 16px", borderRadius: "30px", width: "100%", maxWidth: "800px", boxShadow: "0 4px 20px rgba(0,0,0,0.1)" }}>
-              <button
-                style={{
-                  background: "transparent",
-                  border: "none",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  cursor: "pointer",
-                  color: "#666",
-                  padding: "8px",
-                  flexShrink: 0
-                }}
-              >
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
-                </svg>
-              </button>
-              <input
-                type="text"
-                placeholder="Ask Kapruka Agent..."
-                value={inputText}
-                onChange={(e) => setInputText(e.target.value)}
-                onKeyDown={handleKeyPress}
-                disabled={isLoading}
-                style={{
-                  flex: 1,
-                  background: "transparent",
-                  border: "none",
-                  color: "#333",
-                  fontSize: "1rem",
-                  outline: "none",
-                  height: "40px",
-                }}
-              />
-              <button
-                onClick={toggleListening}
-                disabled={isLoading}
-                className="glow-button"
-                style={{
-                  background: "var(--brand-purple-dark)",
-                  color: "#fff",
-                  border: "none",
-                  borderRadius: "50%",
-                  width: "44px",
-                  height: "44px",
-                  padding: 0,
-                  cursor: isLoading ? "not-allowed" : "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  flexShrink: 0
-                }}
-              >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
-                  <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
-                </svg>
-              </button>
-            </div>
-          </div>
+              {/* Interactive Chat Input Bar */}
+              <div style={{ padding: "20px 24px", display: "flex", justifyContent: "center" }}>
+                <div style={{ display: "flex", gap: "12px", position: "relative", alignItems: "center", background: "#fff", padding: "8px 16px", borderRadius: "30px", width: "100%", maxWidth: "800px", boxShadow: "0 4px 20px rgba(0,0,0,0.1)" }}>
+                  <button
+                    style={{
+                      background: "transparent",
+                      border: "none",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      cursor: "pointer",
+                      color: "#666",
+                      padding: "8px",
+                      flexShrink: 0
+                    }}
+                  >
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+                    </svg>
+                  </button>
+                  <input
+                    type="text"
+                    placeholder="Ask Kapruka Agent..."
+                    value={inputText}
+                    onChange={(e) => setInputText(e.target.value)}
+                    onKeyDown={handleKeyPress}
+                    disabled={isLoading}
+                    style={{
+                      flex: 1,
+                      background: "transparent",
+                      border: "none",
+                      color: "#333",
+                      fontSize: "1rem",
+                      outline: "none",
+                      height: "40px",
+                    }}
+                  />
+                  <button
+                    onClick={toggleListening}
+                    disabled={isLoading}
+                    className="glow-button"
+                    style={{
+                      background: "var(--brand-purple-dark)",
+                      color: "#fff",
+                      border: "none",
+                      borderRadius: "50%",
+                      width: "44px",
+                      height: "44px",
+                      padding: 0,
+                      cursor: isLoading ? "not-allowed" : "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      flexShrink: 0
+                    }}
+                  >
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z" />
+                      <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
 
             </>
           )}
@@ -1508,82 +1663,6 @@ export default function Home() {
         </div>
       )}
 
-      {/* Checkout Form Modal */}
-      {showCheckoutModal && (
-        <div
-          style={{
-            position: "fixed", inset: 0, zIndex: 1000,
-            background: "rgba(10, 4, 30, 0.75)",
-            backdropFilter: "blur(6px)",
-            display: "flex", alignItems: "center", justifyContent: "center"
-          }}
-        >
-          <div
-            className="glass-card animate-fade-in"
-            style={{
-              padding: "36px 40px",
-              maxWidth: "500px",
-              width: "90%",
-              borderRadius: "20px",
-              display: "flex",
-              flexDirection: "column",
-              gap: "20px",
-              border: "1px solid rgba(255, 210, 0, 0.2)",
-              maxHeight: "90vh",
-              overflowY: "auto"
-            }}
-          >
-            <h2 style={{ fontSize: "1.3rem", fontWeight: 800, color: "#fff", margin: 0 }}>
-              Checkout Details
-            </h2>
-            <form onSubmit={submitCheckoutForm} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-              <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                <label style={{ fontSize: "0.85rem", color: "var(--text-muted)", fontWeight: 600 }}>Recipient Name *</label>
-                <input required type="text" value={checkoutForm.name} onChange={e => setCheckoutForm({ ...checkoutForm, name: e.target.value })} style={{ background: "rgba(34, 19, 69, 0.6)", border: "1px solid var(--glass-border)", borderRadius: "10px", padding: "12px", color: "#fff", outline: "none" }} />
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                <label style={{ fontSize: "0.85rem", color: "var(--text-muted)", fontWeight: 600 }}>Delivery Address *</label>
-                <input required type="text" value={checkoutForm.address} onChange={e => setCheckoutForm({ ...checkoutForm, address: e.target.value })} style={{ background: "rgba(34, 19, 69, 0.6)", border: "1px solid var(--glass-border)", borderRadius: "10px", padding: "12px", color: "#fff", outline: "none" }} />
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                <label style={{ fontSize: "0.85rem", color: "var(--text-muted)", fontWeight: 600 }}>City *</label>
-                <SearchableSelect
-                  value={checkoutForm.city}
-                  onChange={(val) => setCheckoutForm({ ...checkoutForm, city: val })}
-                  placeholder="Type to search your city..."
-                  options={[
-                    "Ampara", "Anuradhapura", "Badulla", "Batticaloa", "Colombo 01", "Colombo 02", "Colombo 03", 
-                    "Colombo 04", "Colombo 05", "Colombo 06", "Colombo 07", "Colombo 08", "Colombo 09", "Colombo 10", 
-                    "Colombo 11", "Colombo 12", "Colombo 13", "Colombo 14", "Colombo 15", "Galle", "Gampaha", 
-                    "Hambantota", "Jaffna", "Kalutara", "Kandy", "Kegalle", "Kilinochchi", "Kurunegala", "Mannar", 
-                    "Matale", "Matara", "Monaragala", "Mullaitivu", "Nuwara Eliya", "Polonnaruwa", "Puttalam", 
-                    "Rathnapura", "Trincomalee", "Vavuniya"
-                  ]}
-                />
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                <label style={{ fontSize: "0.85rem", color: "var(--text-muted)", fontWeight: 600 }}>Delivery Date (YYYY-MM-DD) *</label>
-                <input required type="date" value={checkoutForm.date} onChange={e => setCheckoutForm({ ...checkoutForm, date: e.target.value })} style={{ background: "rgba(34, 19, 69, 0.6)", border: "1px solid var(--glass-border)", borderRadius: "10px", padding: "12px", color: "#fff", outline: "none" }} />
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                <label style={{ fontSize: "0.85rem", color: "var(--text-muted)", fontWeight: 600 }}>Contact Number *</label>
-                <input required type="text" value={checkoutForm.phone} onChange={e => setCheckoutForm({ ...checkoutForm, phone: e.target.value })} style={{ background: "rgba(34, 19, 69, 0.6)", border: "1px solid var(--glass-border)", borderRadius: "10px", padding: "12px", color: "#fff", outline: "none" }} />
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                <label style={{ fontSize: "0.85rem", color: "var(--text-muted)", fontWeight: 600 }}>Gift Message (Optional)</label>
-                <textarea value={checkoutForm.giftMessage} onChange={e => setCheckoutForm({ ...checkoutForm, giftMessage: e.target.value })} rows={3} style={{ background: "rgba(34, 19, 69, 0.6)", border: "1px solid var(--glass-border)", borderRadius: "10px", padding: "12px", color: "#fff", outline: "none", resize: "none" }} />
-              </div>
-
-              <div style={{ display: "flex", gap: "12px", marginTop: "10px" }}>
-                <button type="button" onClick={() => setShowCheckoutModal(false)} style={{ flex: 1, background: "transparent", border: "1px solid rgba(255,255,255,0.15)", color: "var(--text-muted)", padding: "12px", borderRadius: "10px", cursor: "pointer", fontWeight: 600 }}>Cancel</button>
-                <button type="submit" disabled={isCheckoutLoading} className="glow-button" style={{ flex: 1, background: "var(--brand-yellow)", color: "var(--brand-purple-dark)", border: "none", padding: "12px", borderRadius: "10px", cursor: isCheckoutLoading ? "not-allowed" : "pointer", fontWeight: 800, opacity: isCheckoutLoading ? 0.7 : 1 }}>
-                  {isCheckoutLoading ? "Processing..." : "Submit Order Details"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
 
 
     </div>

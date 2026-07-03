@@ -12,14 +12,14 @@ import sys
 
 try:
     from .tools import (
-        get_categories, get_product, search_products,
-        list_delivery_cities, check_delivery, create_order, track_order, manage_cart
+        get_categories, get_product, search_products, manage_cart,
+        list_delivery_cities, check_delivery, create_order, track_order
     )
 except ImportError:
     sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))))
     from app.core.agents.tools import (
-        get_categories, get_product, search_products,
-        list_delivery_cities, check_delivery, create_order, track_order, manage_cart
+        get_categories, get_product, search_products, manage_cart,
+        list_delivery_cities, check_delivery, create_order, track_order
     )
 
 from app.core.config.settings import settings
@@ -45,7 +45,7 @@ search_agent_node = create_react_agent(
 
 checkout_agent_node = create_react_agent(
     llm,
-    tools=[list_delivery_cities, check_delivery, create_order, manage_cart],
+    tools=[list_delivery_cities, check_delivery, create_order],
     prompt=SystemMessage(content=CHECKOUT_AGENT_PROMPT)
 )
 
@@ -186,9 +186,21 @@ def serialize_messages(messages) -> str:
         elif role == "ai":
             role = "assistant"
             
+        content = msg.content
+        if isinstance(content, list):
+            text_parts = []
+            for part in content:
+                if isinstance(part, dict) and "text" in part:
+                    text_parts.append(part["text"])
+                elif hasattr(part, "text"):
+                    text_parts.append(part.text)
+                elif isinstance(part, str):
+                    text_parts.append(part)
+            content = "\n".join(text_parts)
+            
         msg_dict = {
             "role": role,
-            "content": msg.content,
+            "content": content,
         }
         
         if hasattr(msg, "tool_calls") and msg.tool_calls:

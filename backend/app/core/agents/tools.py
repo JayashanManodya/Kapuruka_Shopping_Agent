@@ -6,9 +6,99 @@ from typing import List, Optional
 from pydantic import BaseModel, Field, field_validator
 import datetime
 
+class KaprukaMCPClient:
+    async def call(self, tool_name: str, params: dict):
+        params = {key: value for key, value in params.items() if value is not None}
+
+        async with streamablehttp_client(settings.server_url) as (
+            read_stream,
+            write_stream,
+            _,
+        ):
+            async with ClientSession(
+                read_stream,
+                write_stream,
+            ) as session:
+                await session.initialize()
+                return await session.call_tool(
+                    tool_name,
+                    arguments={
+                        "params": params
+                    },
+                )
+
+client = KaprukaMCPClient()
+
+
+@tool
+async def get_categories() -> dict:
+    """Return the Kapruka category tree for browsing and filtering products.
+
+    Returns a JSON-compatible dictionary from `kapruka_list_categories`.
+    """
+    result = await client.call(
+        "kapruka_list_categories",
+        {
+            "depth": 2,
+            "response_format": "json"
+        }
+    )
+
+    return result
+
+@tool
+async def search_products(product: str, limit: int = 10, category: str | None = None, min_price: int | None = None, max_price: int | None = None, sort: str | None = None) -> dict:
+
+    """Search purchasable Kapruka products by query and optional filters.
+
+    Args:
+        product: Search text forwarded as the Kapruka `q` parameter.
+        limit: Maximum number of results to return.
+        category: Optional category filter.
+        min_price: Optional minimum price filter.
+        max_price: Optional maximum price filter.
+        sort: Optional sort key requested by Kapruka.
+
+    Returns:
+        JSON-compatible search results from `kapruka_search_products`.
+    """
+    result = await client.call(
+        "kapruka_search_products",
+        {
+            "q": product,
+            "limit": limit,
+            "category": category,
+            "min_price": min_price,
+            "max_price": max_price,
+            "sort": sort,
+            "response_format": "json"
+        }
+    )
+
+    return result
+
+@tool
+async def get_product(product_id: str) -> dict:
+    """Fetch the full Kapruka product record for a single product ID.
+
+    Args:
+        product_id: Kapruka product identifier.
+
+    Returns:
+        JSON-compatible product details from `kapruka_get_product`.
+    """
+    result = await client.call(
+        "kapruka_get_product",
+        {
+            "product_id": product_id,
+            "response_format": "json"
+        }
+    )
+
+    return result
+
 @tool
 async def manage_cart(
-    user_email: str, 
     action: str, 
     product_id: Optional[str] = None, 
     product_name: Optional[str] = None, 
@@ -25,78 +115,61 @@ async def manage_cart(
     - 'remove': Removes a product from the cart. Requires product_id.
     - 'clear': Empties the cart.
     """
-    from app.core.db.database import AsyncSessionLocal, CartItem
-    from sqlmodel import select
+    from app.api import current_cart
     
-    async with AsyncSessionLocal() as session:
-        if action == "view":
-            result = await session.execute(select(CartItem).where(CartItem.user_email == user_email))
-            items = result.scalars().all()
-            return {"cart": [i.model_dump() for i in items]}
-            
-        elif action == "add":
-            if not product_id or not product_name:
-                return {"error": "product_id and product_name are required for 'add' action"}
-            result = await session.execute(
-                select(CartItem).where(CartItem.user_email == user_email, CartItem.product_id == product_id)
-            )
-            existing = result.scalar_one_or_none()
-            if existing:
-                existing.quantity += quantity
-            else:
-                new_item = CartItem(
-                    user_email=user_email,
-                    product_id=product_id,
-                    product_name=product_name,
-                    price=price,
-                    image=image,
-                    quantity=quantity
-                )
-                session.add(new_item)
-            await session.commit()
-            return {"status": f"Added {quantity} of {product_name} to cart"}
-            
-        elif action == "update":
-            if not product_id:
-                return {"error": "product_id is required for 'update' action"}
-            result = await session.execute(
-                select(CartItem).where(CartItem.user_email == user_email, CartItem.product_id == product_id)
-            )
-            existing = result.scalar_one_or_none()
-            if existing:
-                if quantity <= 0:
-                    await session.delete(existing)
-                    await session.commit()
-                    return {"status": "Item removed from cart because quantity was 0"}
-                else:
-                    existing.quantity = quantity
-                    await session.commit()
-                    return {"status": f"Quantity of {existing.product_name} updated to {quantity}"}
-            return {"error": "Product not found in cart"}
-            
-        elif action == "remove":
-            if not product_id:
-                return {"error": "product_id is required for 'remove' action"}
-            result = await session.execute(
-                select(CartItem).where(CartItem.user_email == user_email, CartItem.product_id == product_id)
-            )
-            existing = result.scalar_one_or_none()
-            if existing:
-                await session.delete(existing)
-                await session.commit()
-                return {"status": "Item removed from cart"}
-            return {"error": "Product not found in cart"}
-            
-        elif action == "clear":
-            result = await session.execute(select(CartItem).where(CartItem.user_email == user_email))
-            items = result.scalars().all()
-            for item in items:
-                await session.delete(item)
-            await session.commit()
-            return {"status": "Cart cleared"}
-            
+    cart = current_cart.get()
+    
+    if action == "view":
+        return {"cart": cart}
+        
+    elif action == "add":
+        if not product_id or not product_name:
+            return {"error": "product_id and product_name are required for 'add' action"}
+        
+        # Check if exists
+        existing = next((item for item in cart if item.get("product_id") == product_id), None)
+        if existing:
+            existing["quantity"] += quantity
         else:
-            return {"error": "Invalid action"}
+            cart.append({
+                "product_id": product_id,
+                "product_name": product_name,
+                "price": price or 0,
+                "image": image or "",
+                "quantity": quantity
+            })
+        current_cart.set(cart)
+        return {"status": f"Added {quantity} of {product_name} to cart"}
+        
+    elif action == "update":
+        if not product_id:
+            return {"error": "product_id is required for 'update' action"}
+            
+        existing = next((item for item in cart if item.get("product_id") == product_id), None)
+        if existing:
+            if quantity <= 0:
+                cart = [item for item in cart if item.get("product_id") != product_id]
+                current_cart.set(cart)
+                return {"status": "Item removed from cart because quantity was 0"}
+            else:
+                existing["quantity"] = quantity
+                current_cart.set(cart)
+                return {"status": f"Quantity updated to {quantity}"}
+        return {"error": "Product not found in cart"}
+        
+    elif action == "remove":
+        if not product_id:
+            return {"error": "product_id is required for 'remove' action"}
+            
+        cart = [item for item in cart if item.get("product_id") != product_id]
+        current_cart.set(cart)
+        return {"status": "Item removed from cart"}
+        
+    elif action == "clear":
+        current_cart.set([])
+        return {"status": "Cart cleared"}
+        
+    return {"error": "Unknown action"}
 
 class KaprukaMCPClient:
     async def call(self, tool_name: str, params: dict):

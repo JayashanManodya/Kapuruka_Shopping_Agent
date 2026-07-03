@@ -3,6 +3,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import json
 from datetime import datetime, timezone
+import contextvars
+
+current_cart = contextvars.ContextVar("current_cart", default=[])
 
 from app.core.agents.agent import shopping_agent, serialize_messages
 
@@ -34,6 +37,7 @@ class MessageInput(BaseModel):
 class ChatRequest(BaseModel):
     messages: list[MessageInput]
     user_email: str | None = None  # Supplied by authenticated frontend
+    cart: list | None = None
 
 class CheckoutDeliveryInfo(BaseModel):
     address: str
@@ -57,10 +61,17 @@ class CheckoutRequest(BaseModel):
 @app.post("/api/chat")
 async def chat(request: ChatRequest):
     try:
+        # Initialize contextvar with the incoming cart
+        current_cart.set(request.cart or [])
+        
         # Reconstruct messages for LangChain
         messages_to_send = []
         if request.user_email:
             messages_to_send.append({"role": "system", "content": f"The current user's email is {request.user_email}."})
+            
+        if request.cart and len(request.cart) > 0:
+            cart_text = ", ".join([f"{item.get('product_name', 'Product')} (ID: {item.get('product_id', '')}, Qty: {item.get('quantity', 1)}, Price: LKR {item.get('price', 0)})" for item in request.cart])
+            messages_to_send.append({"role": "system", "content": f"The user currently has these items in their frontend cart: {cart_text}. When checking out, YOU MUST process the ENTIRE cart together as one order."})
             
         for msg in request.messages:
             msg_dict = {"role": msg.role, "content": msg.content}
@@ -82,8 +93,9 @@ async def chat(request: ChatRequest):
         history_list = json.loads(history_json_str)
         
         # Only return the newly generated messages to append, or the whole history.
-        # Since frontend expects 'history', we just send back the history.
-        return {"history": history_list}
+        # Also return the updated cart state so frontend can sync.
+        new_cart = current_cart.get()
+        return {"history": history_list, "cart": new_cart}
 
     except Exception as e:
         import traceback
