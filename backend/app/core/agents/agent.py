@@ -116,9 +116,30 @@ async def verification_node(state: AgentState) -> dict:
     if len(last_ai.strip()) < 20:
         return {"next_node": END}
 
+    # Collect tool call evidence from recent messages so the verifier
+    # can distinguish real tool-sourced data from hallucinations.
+    tool_evidence_parts = []
+    for m in messages:
+        if hasattr(m, "tool_calls") and m.tool_calls:
+            for tc in m.tool_calls:
+                tool_evidence_parts.append(f"Tool Called: {tc.get('name', 'unknown')}, Args: {json.dumps(tc.get('args', {}))}")
+        if m.type == "tool":
+            tool_name = getattr(m, "name", "unknown_tool")
+            # Include a truncated snippet of the tool result as evidence
+            result_snippet = str(m.content)[:500]
+            tool_evidence_parts.append(f"Tool Result ({tool_name}): {result_snippet}")
+
+    tool_evidence = "\n".join(tool_evidence_parts) if tool_evidence_parts else "No tool calls were made."
+
+    verification_input = (
+        f"User Request: {last_user}\n\n"
+        f"Proposed Response: {last_ai}\n\n"
+        f"Tool Call Evidence:\n{tool_evidence}"
+    )
+
     prompt = [
         SystemMessage(content=VERIFICATION_AGENT_PROMPT),
-        HumanMessage(content=f"User Request: {last_user}\n\nProposed Response: {last_ai}")
+        HumanMessage(content=verification_input)
     ]
     
     response = await llm.ainvoke(prompt)
