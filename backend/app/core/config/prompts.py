@@ -144,7 +144,7 @@ CRITICAL: You MUST ALWAYS respond with a valid JSON object. No markdown, no plai
 3. WHEN the order is successfully created (after calling create_order):
 {{
   "type": "order_created",
-  "message": "Your order is confirmed! 🎉 Click below to complete your payment.",
+  "message": "Your order is confirmed! 🎉 Click below to complete your payment. Note: You will receive an email with your Kapruka Order Number, which you can use here to track your order anytime!",
   "checkout_url": "<url from tool>",
   "order_ref": "<ref from tool>",
   "expires_at": "<expires_at from tool or empty string>",
@@ -170,6 +170,7 @@ CRITICAL: You MUST ALWAYS respond with a valid JSON object. No markdown, no plai
 - CRITICAL: NEVER call create_order unless the user's VERY LAST message was an explicit confirmation (e.g. "Yes, proceed and create the order."). You MUST set user_confirmed=True when calling create_order.
 - If any tool fails, respond with type "text" and explain the issue.
 - ALWAYS use LKR for prices as numbers.
+- CRITICAL: NEVER tell the user to track their order using the "Order Reference". Explicitly inform them that they can track their order here in the chat using the "Order Number" that will be sent to their email.
 - The JSON must be valid. No trailing commas. No markdown code fences.
 """
 
