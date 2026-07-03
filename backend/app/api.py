@@ -136,9 +136,14 @@ async def chat(request: ChatRequest):
         # ── INTERCEPT STATIC TEMPLATES ──
         # Check if user explicitly asks for shopping categories
         last_human_msg = next((m.content.lower() for m in reversed(messages_to_send) if isinstance(m, HumanMessage)), "")
-        category_triggers = ["shopping categories", "show me categories", "list categories", "what categories", "what's available", "explore what"]
         
-        if any(trigger in last_human_msg for trigger in category_triggers):
+        # Broad list of triggers
+        category_triggers = ["categories", "category", "departments", "what's available", "explore what"]
+        
+        # Avoid intercepting if they are explicitly asking to search inside a specific category
+        is_search = any(word in last_human_msg for word in ["in", "search", "find", "looking for", "products"])
+        
+        if any(trigger in last_human_msg for trigger in category_triggers) and not is_search:
             history_json_str = serialize_messages(final_messages)
             history_list = json.loads(history_json_str)
             # Add an AI message to history indicating the response
