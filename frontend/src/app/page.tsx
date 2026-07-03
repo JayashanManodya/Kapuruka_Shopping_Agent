@@ -735,7 +735,7 @@ export default function Home() {
         </div>
 
         {/* Chat Section */}
-        <section className={`glass-card chat-section ${messages.length === 0 ? "empty" : ""}`} style={{ background: messages.length === 0 ? "transparent" : "var(--card-bg)" }}>
+        <section className={`glass-card chat-section ${messages.length === 0 ? "empty" : ""}`} style={{ background: "transparent" }}>
 
           {messages.length === 0 ? (
             // ── KIKO UI Empty State ──
