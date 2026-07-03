@@ -138,7 +138,6 @@ async def manage_cart(
                 "image": image or "",
                 "quantity": quantity
             })
-        current_cart.set(cart)
         return {"status": f"Added {quantity} of {product_name} to cart"}
         
     elif action == "update":
@@ -148,12 +147,10 @@ async def manage_cart(
         existing = next((item for item in cart if item.get("product_id") == product_id), None)
         if existing:
             if quantity <= 0:
-                cart = [item for item in cart if item.get("product_id") != product_id]
-                current_cart.set(cart)
+                cart[:] = [item for item in cart if item.get("product_id") != product_id]
                 return {"status": "Item removed from cart because quantity was 0"}
             else:
                 existing["quantity"] = quantity
-                current_cart.set(cart)
                 return {"status": f"Quantity updated to {quantity}"}
         return {"error": "Product not found in cart"}
         
@@ -161,12 +158,11 @@ async def manage_cart(
         if not product_id:
             return {"error": "product_id is required for 'remove' action"}
             
-        cart = [item for item in cart if item.get("product_id") != product_id]
-        current_cart.set(cart)
+        cart[:] = [item for item in cart if item.get("product_id") != product_id]
         return {"status": "Item removed from cart"}
         
     elif action == "clear":
-        current_cart.set([])
+        cart.clear()
         return {"status": "Cart cleared"}
         
     return {"error": "Unknown action"}

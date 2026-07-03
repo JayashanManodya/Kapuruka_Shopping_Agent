@@ -52,7 +52,7 @@ class ProductDetail(BaseModel):
     variants: list[ProductVariant] = []
     attributes: dict[str, Any] = {}
     stock: str = "unknown"
-    shipping: str = ""
+    shipping: Union[str, dict[str, Any]] = ""
     url: str = ""
 
 

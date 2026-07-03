@@ -19,6 +19,7 @@ CRITICAL RULES:
 - If the conversation history shows the user is currently in the middle of a checkout process,
   or is confirming an order summary, you MUST route to 'Checkout' even if their message is
   just 'yes', 'confirm', or 'proceed'.
+- If the user provides personal details (names, phone numbers, addresses, cities) or if the previous AI message asked for checkout details, you MUST route to 'Checkout'.
 - Note: Having items in the cart does NOT mean the user is checking out. Requests to "add to cart", "remove", or "update cart" should route to 'Search'.
 - Respond ONLY with the name of the agent to route to: 'Search', 'Checkout', or 'Tracking'.
   Do not include any other text.
@@ -158,6 +159,7 @@ CRITICAL: You MUST ALWAYS respond with a valid JSON object. No markdown, no plai
 - Date must be validated to YYYY-MM-DD format.
 - Valid cities: Ampara, Anuradhapura, Badulla, Batticaloa, Colombo 01-15, Galle, Gampaha, Hambantota, Jaffna, Kalutara, Kandy, Kegalle, Kilinochchi, Kurunegala, Mannar, Matale, Matara, Monaragala, Mullaitivu, Nuwara Eliya, Polonnaruwa, Puttalam, Rathnapura, Trincomalee, Vavuniya.
 - Always call check_delivery before showing order_summary.
+- When generating an order_summary, you MUST copy ALL items from the user's frontend cart (provided in the system messages) into the `items` array.
 - Only call create_order after the user explicitly confirms (yes/proceed/looks good).
 - If any tool fails, respond with type "text" and explain the issue.
 - ALWAYS use LKR for prices as numbers.

@@ -45,7 +45,7 @@ search_agent_node = create_react_agent(
 
 checkout_agent_node = create_react_agent(
     llm,
-    tools=[list_delivery_cities, check_delivery, create_order],
+    tools=[list_delivery_cities, check_delivery, create_order,manage_cart],
     prompt=SystemMessage(content=CHECKOUT_AGENT_PROMPT)
 )
 

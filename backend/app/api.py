@@ -64,24 +64,47 @@ async def chat(request: ChatRequest):
         # Initialize contextvar with the incoming cart
         current_cart.set(request.cart or [])
         
+        from langchain_core.messages import HumanMessage, AIMessage, SystemMessage, ToolMessage
+        
         # Reconstruct messages for LangChain
         messages_to_send = []
         if request.user_email:
-            messages_to_send.append({"role": "system", "content": f"The current user's email is {request.user_email}."})
+            messages_to_send.append(SystemMessage(content=f"The current user's email is {request.user_email}."))
             
         if request.cart and len(request.cart) > 0:
             cart_text = ", ".join([f"{item.get('product_name', 'Product')} (ID: {item.get('product_id', '')}, Qty: {item.get('quantity', 1)}, Price: LKR {item.get('price', 0)})" for item in request.cart])
-            messages_to_send.append({"role": "system", "content": f"The user currently has these items in their frontend cart: {cart_text}. When checking out, YOU MUST process the ENTIRE cart together as one order."})
+            messages_to_send.append(SystemMessage(content=f"The user currently has these items in their frontend cart: {cart_text}. When checking out, YOU MUST process the ENTIRE cart together as one order."))
             
         for msg in request.messages:
-            msg_dict = {"role": msg.role, "content": msg.content}
-            if msg.tool_calls:
-                msg_dict["tool_calls"] = msg.tool_calls
-            if msg.tool_call_id:
-                msg_dict["tool_call_id"] = msg.tool_call_id
-            if msg.name:
-                msg_dict["name"] = msg.name
-            messages_to_send.append(msg_dict)
+            if msg.role == "system":
+                messages_to_send.append(SystemMessage(content=msg.content))
+            elif msg.role in ("user", "human"):
+                messages_to_send.append(HumanMessage(content=msg.content))
+            elif msg.role in ("assistant", "ai"):
+                kwargs = {"content": msg.content or ""}
+                if msg.tool_calls:
+                    kwargs["tool_calls"] = msg.tool_calls
+                messages_to_send.append(AIMessage(**kwargs))
+            elif msg.role == "tool":
+                messages_to_send.append(ToolMessage(
+                    content=msg.content or "", 
+                    tool_call_id=msg.tool_call_id or "", 
+                    name=msg.name or ""
+                ))
+        
+        # Sanitize: Remove any orphaned tool messages (tool messages not preceded by an AI message with tool_calls)
+        sanitized_messages = []
+        for i, m in enumerate(messages_to_send):
+            if isinstance(m, ToolMessage):
+                # Check if preceding message was an AIMessage with tool_calls
+                if i > 0 and isinstance(sanitized_messages[-1], AIMessage) and getattr(sanitized_messages[-1], "tool_calls", None):
+                    sanitized_messages.append(m)
+                else:
+                    print(f"Dropping orphaned tool message: {m.name}")
+                    continue
+            else:
+                sanitized_messages.append(m)
+        messages_to_send = sanitized_messages
             
         # Invoke the stateless agent
         response = await shopping_agent.ainvoke(

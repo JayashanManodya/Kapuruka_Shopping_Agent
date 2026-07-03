@@ -13,7 +13,7 @@ interface RecommendedItem {
 }
 
 interface Props {
-  message: string;
+  message: React.ReactNode | string;
   items: RecommendedItem[];
   onAddToCart: (item: RecommendedItem) => void;
   onViewDetails: (item: RecommendedItem) => void;

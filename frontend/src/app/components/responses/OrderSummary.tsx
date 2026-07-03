@@ -6,7 +6,7 @@ interface RecipientInfo { name: string; phone: string; }
 interface DeliveryInfo { address: string; city: string; date: string; }
 
 interface Props {
-  message: string;
+  message: React.ReactNode | string;
   recipient: RecipientInfo;
   delivery: DeliveryInfo;
   sender: string;

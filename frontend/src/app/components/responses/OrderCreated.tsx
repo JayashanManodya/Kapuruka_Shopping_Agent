@@ -4,7 +4,7 @@ import React from "react";
 interface Totals { items: number; delivery: number; grand_total: number; }
 
 interface Props {
-  message: string;
+  message: React.ReactNode | string;
   checkout_url: string;
   order_ref: string;
   expires_at: string;

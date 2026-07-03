@@ -5,7 +5,7 @@ interface CategoryChild { name: string; url: string; }
 interface Category { name: string; url: string; children: CategoryChild[]; }
 
 interface Props {
-  message: string;
+  message: React.ReactNode | string;
   categories: Category[];
   onSelect: (name: string) => void;
 }

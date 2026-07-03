@@ -273,7 +273,29 @@ export default function Home() {
   };
 
   const addToCart = (item: any) => {
-    handleSendMessage(`Please add product ID ${item.id} to my cart`, { hidden: true });
+    setCartItems(prev => {
+      const existing = prev.find(i => i.product_id === item.id);
+      if (existing) {
+        return prev.map(i => i.product_id === item.id ? { ...i, quantity: (i.quantity || 1) + 1 } : i);
+      } else {
+        return [...prev, { product_id: item.id, product_name: item.name, price: item.price || 0, quantity: 1, image_url: item.image_url }];
+      }
+    });
+
+    const structured: AgentResponse = {
+      type: "cart_update",
+      message: `Added ${item.name} to your basket! 🛒`,
+      action: "added",
+      product_id: item.id,
+      product_name: item.name
+    };
+    
+    const syntheticMsg: Message = { 
+      role: "assistant", 
+      content: JSON.stringify(structured), 
+      structured_response: structured 
+    };
+    setMessages(prev => [...prev, syntheticMsg]);
   };
 
   const removeFromCart = (productId: string) => {
@@ -498,7 +520,7 @@ export default function Home() {
             message={sr.message}
             items={sr.items}
             carouselId={`carousel-${msgIndex}`}
-            onAddToCart={(item) => addToCart({ id: item.id, name: item.name })}
+            onAddToCart={(item) => addToCart({ id: item.id, name: item.name, price: item.price, image_url: item.image_url })}
             onViewDetails={(item) => handleSendMessage(`Please retrieve details for product ${item.id}`)}
             onLoadMore={() => handleLoadMore(msgIndex)}
             isLoadingMore={loadingMoreIds[msgIndex]}
@@ -510,7 +532,7 @@ export default function Home() {
           <ProductDetail
             message={sr.message}
             product={sr.product}
-            onAddToCart={(p) => addToCart({ id: p.id, name: p.name })}
+            onAddToCart={(p) => addToCart({ id: p.id, name: p.name, price: p.price, image_url: p.images?.[0] })}
           />
         );
 

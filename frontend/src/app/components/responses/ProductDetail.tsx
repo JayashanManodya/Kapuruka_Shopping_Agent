@@ -9,7 +9,7 @@ interface ProductData {
 }
 
 interface Props {
-  message: string;
+  message: React.ReactNode | string;
   product: ProductData;
   onAddToCart: (product: ProductData) => void;
 }
@@ -114,7 +114,9 @@ export default function ProductDetail({ message, product, onAddToCart }: Props) 
               </div>
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: "0.85rem", fontWeight: 700, color: "#111827", marginBottom: "4px" }}>Shipping</div>
-                <div style={{ fontSize: "0.75rem", color: "#6b7280" }}>{product.shipping}</div>
+                <div style={{ fontSize: "0.75rem", color: "#6b7280" }}>
+                  {typeof product.shipping === "string" ? product.shipping : Object.entries(product.shipping).map(([k, v]) => `${k.replace(/_/g, ' ')}: ${v}`).join(", ")}
+                </div>
               </div>
             </div>
           )}

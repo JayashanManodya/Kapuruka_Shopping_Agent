@@ -2,7 +2,7 @@
 import React from "react";
 
 interface Props {
-  message: string;
+  message: React.ReactNode | string;
   action: string;
   product_name: string;
   onViewCart: () => void;

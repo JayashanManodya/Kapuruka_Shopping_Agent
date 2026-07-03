@@ -8,7 +8,7 @@ interface DeliveryInfo { address: string; city: string; date: string; }
 interface PaymentInfo { status: string; method: string; }
 
 interface Props {
-  message: string;
+  message: React.ReactNode | string;
   order_ref: string;
   status: string;
   timeline: TimelineEntry[];
