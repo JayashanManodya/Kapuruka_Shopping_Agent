@@ -119,7 +119,7 @@ def _has_checkout_details(messages) -> bool:
 
     # Phone: Sri Lankan +94 format (with or without spaces/dashes) or local 07x format
     has_phone = bool(re.search(
-        r'(\+94[\s\-]?\d[\s\-]?\d[\s\-]?\d[\s\-]?\d[\s\-]?\d[\s\-]?\d[\s\-]?\d[\s\-]?\d[\s\-]?\d|0\d{9}|\d{10})',
+        r'(?:\+94|0)[\s\-]?\d[\s\-]?\d[\s\-]?\d[\s\-]?\d[\s\-]?\d[\s\-]?\d[\s\-]?\d[\s\-]?\d[\s\-]?\d',
         human_text
     ))
     # Date: YYYY-MM-DD or YYYY/MM/DD
@@ -237,8 +237,19 @@ async def verification_node(state: AgentState) -> dict:
     if verification_result.upper().startswith("APPROVED"):
         # Pass through unchanged
         return {"next_node": END}
+    
+    # If the verifier outputted conversational text and a JSON block, extract just the JSON
+    import re
+    json_match = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', verification_result, re.DOTALL)
+    if json_match:
+        verification_result = json_match.group(1).strip()
     else:
-        # Replace the last AI message with the corrected one (not append)
+        # Fallback: if no code fences, see if we can find the outermost braces
+        brace_match = re.search(r'(\{.*\})', verification_result, re.DOTALL)
+        if brace_match:
+            verification_result = brace_match.group(1).strip()
+            
+    # Replace the last AI message with the corrected one (not append)
         # Remove the last AI message from the list, then add corrected one
         updated_messages = []
         replaced = False

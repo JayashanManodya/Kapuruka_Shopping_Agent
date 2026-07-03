@@ -695,7 +695,7 @@ export default function Home() {
             ) : (
               cartItems.map(item => (
                 <div key={item.product_id} style={{ display: "flex", gap: "12px", background: "rgba(255,255,255,0.05)", padding: "12px", borderRadius: "12px", alignItems: "center" }}>
-                  {item.image ? <img src={item.image} alt={item.product_name} style={{ width: 60, height: 60, objectFit: "contain", background: "#fff", borderRadius: "8px" }} /> : <div style={{ width: 60, height: 60, background: "rgba(255,255,255,0.1)", borderRadius: "8px" }} />}
+                  {(item.image_url || item.image) ? <img src={item.image_url || item.image} alt={item.product_name} style={{ width: 60, height: 60, objectFit: "contain", background: "#fff", borderRadius: "8px" }} /> : <div style={{ width: 60, height: 60, background: "rgba(255,255,255,0.1)", borderRadius: "8px" }} />}
                   <div style={{ flex: 1 }}>
                     <div style={{ color: "#fff", fontSize: "0.9rem", fontWeight: "bold", marginBottom: "6px" }}>{item.product_name}</div>
                     <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>

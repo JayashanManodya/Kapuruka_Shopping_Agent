@@ -226,7 +226,8 @@ CRITICAL RULES:
 6. The JSON must be valid. No trailing commas. No markdown code fences.
 7. If the response is valid JSON and correct, output exactly: APPROVED
 8. If the response has issues (not JSON, wrong type, hallucinated data, missing fields):
-   - Fix it and output the corrected JSON directly.
+   - Fix it and output ONLY the corrected JSON directly.
+   - Do NOT output any explanations, conversational text, or markdown code fences like ```json.
    - Do NOT output "APPROVED" if you are providing a correction.
    - If you cannot fix it (e.g. hallucinated products with no tool evidence), output:
      {"type": "text", "message": "I'm sorry, I couldn't find that information right now. Please try again!"}
