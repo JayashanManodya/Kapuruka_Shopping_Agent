@@ -132,6 +132,30 @@ async def chat(request: ChatRequest):
             final_messages.append(m)
             
         messages_to_send = final_messages
+        
+        # ── INTERCEPT STATIC TEMPLATES ──
+        # Check if user explicitly asks for shopping categories
+        last_human_msg = next((m.content.lower() for m in reversed(messages_to_send) if isinstance(m, HumanMessage)), "")
+        category_triggers = ["shopping categories", "show me categories", "list categories", "what categories", "what's available", "explore what"]
+        
+        if any(trigger in last_human_msg for trigger in category_triggers):
+            history_json_str = serialize_messages(final_messages)
+            history_list = json.loads(history_json_str)
+            # Add an AI message to history indicating the response
+            history_list.append({
+                "role": "assistant",
+                "content": '{"type": "list_categories", "message": "Here you go, machan! Take your time and browse through whatever catches your eye."}'
+            })
+            return {
+                "history": history_list,
+                "cart": current_cart.get(),
+                "structured_response": {
+                    "type": "list_categories",
+                    "message": "Here you go, machan! Take your time and browse through whatever catches your eye. Anything specific you're looking for, just let me know!",
+                    "categories": [] # Frontend will render its own hardcoded UI for this
+                }
+            }
+        # ────────────────────────────────
             
         # Invoke the stateless agent
         response = await shopping_agent.ainvoke(
