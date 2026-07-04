@@ -308,7 +308,7 @@ export default function Home() {
   const [loadingMoreIds, setLoadingMoreIds] = useState<Record<number, boolean>>({});
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [language, setLanguage] = useState("English");
-  const [showLanguageModal, setShowLanguageModal] = useState(true);
+  const [showLanguageModal, setShowLanguageModal] = useState(false);
   const [showFeaturesModal, setShowFeaturesModal] = useState(false);
   const [selectedLangTemp, setSelectedLangTemp] = useState("English");
   const [attachedImage, setAttachedImage] = useState<string | null>(null);
@@ -337,6 +337,10 @@ export default function Home() {
 
       setLanguage(resolvedLang);
       setSelectedLangTemp(resolvedLang);
+    }
+    const hasSeenPopups = localStorage.getItem("kapruka_has_seen_popups");
+    if (!hasSeenPopups) {
+      setShowLanguageModal(true);
     }
   }, []);
 
@@ -1411,7 +1415,10 @@ export default function Home() {
 
             {/* Action button */}
             <button
-              onClick={() => setShowFeaturesModal(false)}
+              onClick={() => {
+                setShowFeaturesModal(false);
+                localStorage.setItem("kapruka_has_seen_popups", "true");
+              }}
               style={{
                 width: "100%",
                 background: "#4c1d95",
