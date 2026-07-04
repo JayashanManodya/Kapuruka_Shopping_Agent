@@ -105,7 +105,7 @@ export default function CheckoutForm({ message, initialData, onSubmit }: Checkou
   return (
     <div className="animate-fade-in agent-card-glow" style={{ width: "100%", maxWidth: "420px", display: "flex", flexDirection: "column", gap: "12px", background: "#fff", borderRadius: "20px", overflow: "hidden", boxShadow: "0 10px 40px -10px rgba(0,0,0,0.1), 0 0 0 1px rgba(0,0,0,0.05)", border: "1px solid rgba(83,34,184,0.1)" }}>
       {/* Header */}
-      <div style={{ background: "linear-gradient(135deg, var(--brand-purple-light), var(--brand-purple-dark))", padding: "18px 24px", color: "#fff", display: "flex", alignItems: "center", gap: "12px" }}>
+      <div style={{ background: "#3b2667", padding: "18px 24px", color: "#fff", display: "flex", alignItems: "center", gap: "12px" }}>
         <Truck size={22} color="#fff" />
         <span style={{ fontWeight: 700, fontSize: "1.1rem", color: "#fff", letterSpacing: "0.3px" }}>Delivery Details</span>
       </div>
@@ -195,7 +195,7 @@ export default function CheckoutForm({ message, initialData, onSubmit }: Checkou
             <textarea name="giftMessage" value={formData.giftMessage} onChange={handleChange} placeholder="Happy Birthday!" rows={2} style={{ padding: "10px 14px", borderRadius: "10px", border: "1px solid #e5e7eb", fontSize: "0.95rem", outline: "none", width: "100%", boxSizing: "border-box", resize: "none", fontFamily: "inherit" }} />
           </div>
 
-          <button type="submit" className="glow-button" style={{ marginTop: "10px", background: "var(--brand-purple-dark)", color: "#fff", border: "none", padding: "14px", borderRadius: "12px", fontSize: "1rem", fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", transition: "all 0.2s" }}>
+          <button type="submit" className="glow-button" style={{ marginTop: "10px", background: "#facc15", color: "#1e1b4b", border: "none", padding: "14px", borderRadius: "12px", fontSize: "1.05rem", fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", transition: "all 0.2s" }}>
             <Send size={18} /> Submit Details
           </button>
         </form>
