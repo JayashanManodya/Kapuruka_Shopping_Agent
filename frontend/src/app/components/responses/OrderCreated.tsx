@@ -46,7 +46,7 @@ export default function OrderCreated({ message, checkout_url, order_ref, expires
             <div style={{ height: "1px", background: "rgba(255,255,255,0.15)", marginBottom: "12px" }}></div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
               <span style={{ color: "#fff", fontWeight: 700, fontSize: "1.1rem" }}>Total</span>
-              <span style={{ color: "#facc15", fontWeight: 800, fontSize: "1.2rem" }}>LKR {totals.grand_total.toLocaleString()}</span>
+              <span style={{ color: "#4ade80", fontWeight: 800, fontSize: "1.2rem" }}>LKR {totals.grand_total.toLocaleString()}</span>
             </div>
           </>
         )}

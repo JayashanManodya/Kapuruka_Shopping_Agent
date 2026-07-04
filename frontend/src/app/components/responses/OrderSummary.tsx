@@ -76,7 +76,7 @@ export default function OrderSummary({ message, recipient, delivery, sender, ite
         </div>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
           <span style={{ color: "#fff", fontWeight: 700, fontSize: "1.1rem" }}>Grand Total</span>
-          <span style={{ color: "#16a34a", fontWeight: 800, fontSize: "1.2rem" }}>LKR {grand_total.toLocaleString()}</span>
+          <span style={{ color: "#4ade80", fontWeight: 800, fontSize: "1.2rem" }}>LKR {grand_total.toLocaleString()}</span>
         </div>
 
         <button

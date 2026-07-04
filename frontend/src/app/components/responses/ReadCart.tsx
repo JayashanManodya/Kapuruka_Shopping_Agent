@@ -62,7 +62,7 @@ export default function ReadCart({ message, items, total, onViewCart }: Props) {
             <div style={{ height: "1px", background: "#eee", margin: "8px 0" }} />
             <div style={{ display: "flex", justifyContent: "space-between", color: "#333", fontSize: "1rem", fontWeight: 700 }}>
               <span>Total</span>
-              <span style={{ color: "#16a34a" }}>LKR {displayTotal.toLocaleString()}</span>
+              <span style={{ color: "#14883fff" }}>LKR {displayTotal.toLocaleString()}</span>
             </div>
           </div>
         ) : (
