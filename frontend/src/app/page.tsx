@@ -11,6 +11,7 @@ import TrackOrder from "./components/responses/TrackOrder";
 import ListCategories from "./components/responses/ListCategories";
 import CartUpdate from "./components/responses/CartUpdate";
 import ReadCart from "./components/responses/ReadCart";
+import CheckoutForm from "./components/responses/CheckoutForm";
 
 // ─────────────────────────────────────────
 // Types
@@ -36,6 +37,7 @@ type AgentResponse =
   | { type: "order_created"; message: string; checkout_url: string; order_ref: string; expires_at: string; totals: any }
   | { type: "track_order"; message: string; order_ref: string; status: string; timeline: any[]; recipient: any; delivery: any; payment: any; items: any[] }
   | { type: "read_cart"; message: string; items: any[]; total: number }
+  | { type: "checkout_form"; message: string; recipient_name?: string; phone?: string; address?: string; city?: string; date?: string; sender_name?: string; gift_message?: string; }
   | { type: "text"; message: string };
 
 interface ChatThread {
@@ -432,11 +434,23 @@ export default function Home() {
 
       if (data.history && data.history.length > 0) {
         // Attach the structured_response to the last assistant message
+        // and carefully preserve 'hidden' and 'structured_response' from the old messages!
         const history: Message[] = data.history.map((m: any, idx: number, arr: any[]) => {
-          if (m.role === "assistant" && idx === arr.length - 1 && structured) {
-            return { ...m, structured_response: structured };
+          // Look up matching message in the frontend's previous state
+          // to carry over frontend-only fields that the backend doesn't track.
+          const oldMsg = updatedMessages.find(old => old.role === m.role && old.content === m.content);
+          
+          const merged = { ...m };
+          if (oldMsg) {
+             if (oldMsg.hidden !== undefined) merged.hidden = oldMsg.hidden;
+             if (oldMsg.structured_response !== undefined) merged.structured_response = oldMsg.structured_response;
           }
-          return m;
+          
+          // The backend sends the latest parsed structured_response separately
+          if (merged.role === "assistant" && idx === arr.length - 1 && structured) {
+            merged.structured_response = structured;
+          }
+          return merged;
         });
         setMessages(history);
       }
@@ -573,6 +587,26 @@ export default function Home() {
             items={sr.items}
             total={sr.total}
             onViewCart={() => setIsCartOpen(true)}
+          />
+        );
+
+      case "checkout_form":
+        return (
+          <CheckoutForm
+            message={sr.message}
+            initialData={{
+              recipientName: sr.recipient_name || "",
+              phone: sr.phone || "",
+              address: sr.address || "",
+              city: sr.city || "",
+              date: sr.date || "",
+              senderName: sr.sender_name || "",
+              giftMessage: sr.gift_message || "",
+            }}
+            onSubmit={(details) => handleSendMessage(
+              `Here are my checkout details:\nRecipient: ${details.recipientName} (${details.phone})\nDelivery Address: ${details.address}, ${details.city}\nDate: ${details.date}\nSender: ${details.senderName}\nGift Message: ${details.giftMessage || "None"}`,
+              { hidden: true }
+            )}
           />
         );
 
@@ -899,16 +933,8 @@ export default function Home() {
               <div style={{ flex: 1, overflowY: "auto", overflowX: "hidden", padding: "24px", display: "flex", flexDirection: "column", alignItems: "center" }}>
                 <div style={{ width: "100%", maxWidth: "800px", display: "flex", flexDirection: "column", gap: "20px" }}>
 
-                  {/* Deduplicate consecutive assistant messages */}
-                  {(() => {
-                    const deduped: typeof messages = [];
-                    messages.forEach((msg, i) => {
-                      if (msg.role === "assistant" && i + 1 < messages.length && messages[i + 1].role === "assistant") return;
-                      if (msg.role !== "system") deduped.push(msg);
-                    });
-                    return deduped;
-                  })().map((msg, index) => {
-                    if (msg.hidden) return null;
+                  {messages.map((msg, index) => {
+                    if (msg.hidden || msg.role === "system") return null;
                     const isUser = msg.role === "user";
                     const isTool = msg.role === "tool";
 

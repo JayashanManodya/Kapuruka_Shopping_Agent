@@ -170,6 +170,17 @@ class TextResponse(BaseModel):
 # Discriminated union — the single type the API/frontend speaks
 # ---------------------------------------------------------------------------
 
+class CheckoutFormResponse(BaseModel):
+    type: Literal["checkout_form"]
+    message: str
+    recipient_name: str = ""
+    phone: str = ""
+    address: str = ""
+    city: str = ""
+    date: str = ""
+    sender_name: str = ""
+    gift_message: str = ""
+
 AgentResponse = Annotated[
     Union[
         RecommendedItemsResponse,
@@ -181,6 +192,7 @@ AgentResponse = Annotated[
         TrackOrderResponse,
         ReadCartResponse,
         TextResponse,
+        CheckoutFormResponse,
     ],
     Field(discriminator="type"),
 ]

@@ -62,14 +62,19 @@ class AgentState(TypedDict):
     active_worker: str
 
 def trim_messages_for_llm(messages: Sequence[BaseMessage], max_msgs: int = 15) -> list[BaseMessage]:
-    """Keep only the last N messages to save tokens. Ensures we start at a HumanMessage."""
-    if len(messages) <= max_msgs:
-        return list(messages)
-    trimmed = list(messages)[-max_msgs:]
+    """Keep only the last N messages to save tokens. Ensures we start at a HumanMessage and preserves SystemMessages."""
+    system_msgs = [m for m in messages if m.type == "system"]
+    other_msgs = [m for m in messages if m.type != "system"]
+    
+    if len(other_msgs) <= max_msgs:
+        return system_msgs + other_msgs
+        
+    trimmed = other_msgs[-max_msgs:]
     # Drop orphaned AI/Tool messages at the boundary so we always start with a user message
     while trimmed and trimmed[0].type in ("tool", "ai"):
         trimmed.pop(0)
-    return trimmed
+        
+    return system_msgs + trimmed
 
 def log_messages(node_name: str, messages: Sequence[BaseMessage]):
     current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -78,8 +83,6 @@ def log_messages(node_name: str, messages: Sequence[BaseMessage]):
         content = msg.content
         if isinstance(content, list):
             content = "[List Content]"
-        elif isinstance(content, str) and len(content) > 100:
-            content = content[:100] + "..."
         
         tool_call_info = ""
         if hasattr(msg, "tool_calls") and msg.tool_calls:
@@ -247,21 +250,31 @@ async def verification_node(state: AgentState) -> dict:
         if brace_match:
             verification_result = brace_match.group(1).strip()
             
-    # Replace the last AI message with the corrected one (not append)
-        # Remove the last AI message from the list, then add corrected one
-        updated_messages = []
-        replaced = False
+    # Replace the last AI message with the corrected one by matching its ID
+        last_ai_message = None
         for m in reversed(list(messages)):
-            if m.type == "ai" and not replaced:
-                # Skip this one — we're replacing it
-                replaced = True
-                continue
-            updated_messages.insert(0, m)
-        updated_messages.append(AIMessage(content=verification_result))
-        return {
-            "messages": updated_messages,
-            "next_node": END
-        }
+            if m.type == "ai":
+                last_ai_message = m
+                break
+                
+        if last_ai_message and getattr(last_ai_message, "id", None):
+            return {
+                "messages": [AIMessage(content=verification_result, id=last_ai_message.id)],
+                "next_node": END
+            }
+        else:
+            updated_messages = []
+            replaced = False
+            for m in reversed(list(messages)):
+                if m.type == "ai" and not replaced:
+                    replaced = True
+                    continue
+                updated_messages.insert(0, m)
+            updated_messages.append(AIMessage(content=verification_result))
+            return {
+                "messages": updated_messages,
+                "next_node": END
+            }
 
 def route_from_supervisor(state: AgentState) -> str:
     return state.get("active_worker", "Search")

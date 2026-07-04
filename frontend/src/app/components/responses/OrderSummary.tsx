@@ -54,10 +54,17 @@ export default function OrderSummary({ message, recipient, delivery, sender, ite
         <div style={{ marginBottom: "16px" }}>
           <div style={{ fontSize: "0.7rem", color: "#b4a8d4", textTransform: "uppercase", letterSpacing: "0.5px", fontWeight: 700, marginBottom: "8px" }}>ITEMS</div>
           {items.map((item, i) => (
-            <div key={i} style={{ display: "flex", justifyContent: "space-between", color: "#e2d9f3", fontSize: "0.9rem", marginBottom: "6px" }}>
-              <span>{item.name} x{item.quantity}</span>
-              <span style={{ color: "#facc15" }}>LKR {(item.price * item.quantity).toLocaleString()}</span>
-            </div>
+            <React.Fragment key={i}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", color: "#e2d9f3", fontSize: "0.9rem" }}>
+                <div style={{ display: "flex", flexDirection: "column", paddingRight: "12px" }}>
+                  <span>{item.name} x{item.quantity}</span>
+                </div>
+                <span style={{ color: "#facc15", fontWeight: 600, whiteSpace: "nowrap", textAlign: "right" }}>LKR {(item.price * item.quantity).toLocaleString()}</span>
+              </div>
+              {i < items.length - 1 && (
+                <div style={{ height: "1px", background: "rgba(255,255,255,0.1)", margin: "6px 0" }} />
+              )}
+            </React.Fragment>
           ))}
         </div>
 
@@ -69,7 +76,7 @@ export default function OrderSummary({ message, recipient, delivery, sender, ite
         </div>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
           <span style={{ color: "#fff", fontWeight: 700, fontSize: "1.1rem" }}>Grand Total</span>
-          <span style={{ color: "#facc15", fontWeight: 800, fontSize: "1.2rem" }}>LKR {grand_total.toLocaleString()}</span>
+          <span style={{ color: "#16a34a", fontWeight: 800, fontSize: "1.2rem" }}>LKR {grand_total.toLocaleString()}</span>
         </div>
 
         <button

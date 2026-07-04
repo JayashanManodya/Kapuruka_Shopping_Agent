@@ -144,7 +144,8 @@ async def chat(request: ChatRequest):
         is_search = any(word in last_human_msg for word in ["in", "search", "find", "looking for", "products"])
         
         if any(trigger in last_human_msg for trigger in category_triggers) and not is_search:
-            history_json_str = serialize_messages(final_messages)
+            history_msgs = [m for m in final_messages if m.type != "system"]
+            history_json_str = serialize_messages(history_msgs)
             history_list = json.loads(history_json_str)
             # Add an AI message to history indicating the response
             history_list.append({
@@ -168,7 +169,9 @@ async def chat(request: ChatRequest):
             config={"configurable": {"thread_id": "stateless"}},
         )
 
-        history_json_str = serialize_messages(response.get("messages", []))
+        # Strip out system messages before returning to frontend
+        history_msgs = [m for m in response.get("messages", []) if m.type != "system"]
+        history_json_str = serialize_messages(history_msgs)
         history_list = json.loads(history_json_str)
         
         # Extract the structured response parsed by the verification node
