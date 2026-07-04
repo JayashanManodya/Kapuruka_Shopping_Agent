@@ -77,6 +77,8 @@ def trim_messages_for_llm(messages: Sequence[BaseMessage], max_msgs: int = 15) -
     return system_msgs + trimmed
 
 def log_messages(node_name: str, messages: Sequence[BaseMessage]):
+    if not settings.log:
+        return
     current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     print(f"\n{'='*50}\n[{current_time}] [{node_name}] State: {len(messages)} messages\n{'='*50}")
     for i, msg in enumerate(messages):

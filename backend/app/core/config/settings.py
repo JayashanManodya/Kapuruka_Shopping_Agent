@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     host: str = Field("0.0.0.0", validation_alias="API_HOST")
     port: int = Field(8000, validation_alias="API_PORT")
     env: str = Field("development", validation_alias="ENV")
+    log: bool = Field(False, validation_alias="LOG")
 
     # MCP Server URL
     server_url: str = Field("https://mcp.kapruka.com/mcp", validation_alias="SERVER_URL")
