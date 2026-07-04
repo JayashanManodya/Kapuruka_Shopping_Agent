@@ -185,6 +185,107 @@ const SearchableSelect = ({ value, onChange, options, placeholder }: { value: st
 };
 
 // ─────────────────────────────────────────
+// Localization
+// ─────────────────────────────────────────
+
+const LOCALIZATION: Record<string, {
+  landingGreeting: React.ReactNode;
+  inputPlaceholderEmpty: string;
+  inputPlaceholderFloating: string;
+  categories: { original: string; label: string }[];
+  cartAdded: (name: string) => string;
+  orderCreated: string;
+  paymentSuccessMsg: string;
+  apiErrorMsg: (err: string) => string;
+}> = {
+  "English": {
+    landingGreeting: <>Hi I'm <span style={{ color: "#5322B8" }}>KIKO</span>, Ready to<br />Help Shopping?</>,
+    inputPlaceholderEmpty: "Ask anything you want...",
+    inputPlaceholderFloating: "Ask Kapruka Agent...",
+    categories: [
+      { original: "Birthday Gifts", label: "Birthday Gifts" },
+      { original: "Flowers", label: "Flowers" },
+      { original: "Cakes", label: "Cakes" },
+      { original: "Chocolates", label: "Chocolates" },
+      { original: "Groceries", label: "Groceries" },
+      { original: "Check Delivery", label: "Check Delivery" }
+    ],
+    cartAdded: (name) => `Added ${name} to your basket! 🛒`,
+    orderCreated: "Your order has been created successfully! 🎉",
+    paymentSuccessMsg: "Thank you for confirming! I have cleared your cart for you. You can track your order status anytime by pasting the **Order Number** sent to your email into this chat.",
+    apiErrorMsg: (err) => `Aiyo! ⚠️ I had trouble connecting to the backend server. Please try again later. (${err})`
+  },
+  "Sinhala (Unicode)": {
+    landingGreeting: <>ආයුබෝවන්, මම <span style={{ color: "#5322B8" }}>KIKO</span>.<br />බඩු ගන්න උදව් කරන්නද?</>,
+    inputPlaceholderEmpty: "ඔබට අවශ්‍ය ඕනෑම දෙයක් අසන්න...",
+    inputPlaceholderFloating: "කපෘක නියෝජිතයාගෙන් අසන්න...",
+    categories: [
+      { original: "Birthday Gifts", label: "උපන්දින තෑගි" },
+      { original: "Flowers", label: "මල්" },
+      { original: "Cakes", label: "කේක්" },
+      { original: "Chocolates", label: "චොකලට්" },
+      { original: "Groceries", label: "බඩු බාහිරාදිය" },
+      { original: "Check Delivery", label: "බෙදාහැරීම් පරීක්ෂාව" }
+    ],
+    cartAdded: (name) => `${name} ඔබේ කූඩයට එකතු කරන ලදී! 🛒`,
+    orderCreated: "ඔබගේ ඇණවුම සාර්ථකව නිර්මාණය කරන ලදී! 🎉",
+    paymentSuccessMsg: "තහවුරු කිරීම ගැන ස්තුතියි! මම ඔබගේ කූඩය හිස් කළා. ඔබගේ විද්‍යුත් තැපෑලට එවා ඇති **ඇණවුම් අංකය** මෙම චැට් එකට ඇතුලත් කිරීමෙන් ඕනෑම වේලාවක ඇණවුම් තත්ත්වය නිරීක්ෂණය කළ හැක.",
+    apiErrorMsg: (err) => `අයියෝ! ⚠️ පසුපස සේවාදායකයට සම්බන්ධ වීමට නොහැකි විය. පසුව නැවත උත්සාහ කරන්න. (${err})`
+  },
+  "Singlish": {
+    landingGreeting: <>Ayubowan, mama <span style={{ color: "#5322B8" }}>KIKO</span>.<br />Oyata badu ganna udaw karannada?</>,
+    inputPlaceholderEmpty: "Oyata one deyak ahanna...",
+    inputPlaceholderFloating: "Kapruka Agent gen ahanna...",
+    categories: [
+      { original: "Birthday Gifts", label: "Birthday Gifts" },
+      { original: "Flowers", label: "Mal (Flowers)" },
+      { original: "Cakes", label: "Cakes" },
+      { original: "Chocolates", label: "Chocolates" },
+      { original: "Groceries", label: "Groceries" },
+      { original: "Check Delivery", label: "Delivery Check" }
+    ],
+    cartAdded: (name) => `${name} oyage basket ekata add kala! 🛒`,
+    orderCreated: "Oyage order eka successfully create kala! 🎉",
+    paymentSuccessMsg: "Confirm kalata sthuthi! Mama oyage basket eka clear kala. Oyage email ekata apu **Order Number** eka methanata daala order status eka track karanna puluwan.",
+    apiErrorMsg: (err) => `Aiyo! ⚠️ Backend server ekata connect wenna bari una. Passe try karanna. (${err})`
+  },
+  "Tamil (Unicode)": {
+    landingGreeting: <>வணக்கம், நான் <span style={{ color: "#5322B8" }}>KIKO</span>.<br />உங்களுக்கு உதவட்டுமா?</>,
+    inputPlaceholderEmpty: "உங்களுக்கு தேவையானதை கேளுங்கள்...",
+    inputPlaceholderFloating: "கப்ருகா முகவரிடம் கேளுங்கள்...",
+    categories: [
+      { original: "Birthday Gifts", label: "பிறந்தநாள் பரிசுகள்" },
+      { original: "Flowers", label: "பூக்கள்" },
+      { original: "Cakes", label: "கேக்குகள்" },
+      { original: "Chocolates", label: "சாக்லேட்டுகள்" },
+      { original: "Groceries", label: "மளிகை பொருட்கள்" },
+      { original: "Check Delivery", label: "டெலிவரி சரிபார்க்கவும்" }
+    ],
+    cartAdded: (name) => `${name} உங்கள் கூடையில் சேர்க்கப்பட்டது! 🛒`,
+    orderCreated: "உங்கள் ஆர்டர் வெற்றிகரமாக உருவாக்கப்பட்டது! 🎉",
+    paymentSuccessMsg: "உறுதிப்படுத்தியதற்கு நன்றி! உங்கள் கூடையை நான் காலியாக்கிவிட்டேன். உங்கள் மின்னஞ்சலுக்கு அனுப்பப்பட்ட **ஆர்டர் எண்ணை** இங்கு பதிவிடுவதன் மூலம் உங்கள் ஆர்டரின் நிலையை எப்போது வேண்டுமானாலும் கண்காணிக்கலாம்.",
+    apiErrorMsg: (err) => `அய்யோ! ⚠️ சர்வரை இணைப்பதில் சிக்கல் ஏற்பட்டது. பின்னர் மீண்டும் முயற்சிக்கவும். (${err})`
+  },
+  "Tanglish": {
+    landingGreeting: <>Vanakkam, naan <span style={{ color: "#5322B8" }}>KIKO</span>.<br />Ungaluku help pannava?</>,
+    inputPlaceholderEmpty: "Ungaluku vena de kelunga...",
+    inputPlaceholderFloating: "Kapruka Agent kitta kelunga...",
+    categories: [
+      { original: "Birthday Gifts", label: "Birthday Gifts" },
+      { original: "Flowers", label: "Pookkal (Flowers)" },
+      { original: "Cakes", label: "Cakes" },
+      { original: "Chocolates", label: "Chocolates" },
+      { original: "Groceries", label: "Groceries" },
+      { original: "Check Delivery", label: "Delivery Check" }
+    ],
+    cartAdded: (name) => `${name} unga basket la add panniyachu! 🛒`,
+    orderCreated: "Unga order successfully create panniyachu! 🎉",
+    paymentSuccessMsg: "Confirm pannathuku nandri! Basket clear panniyachu. Ungaluku vantha **Order Number** ah inga paste panni eppa vena track pannikalam.",
+    apiErrorMsg: (err) => `Aiyo! ⚠️ Backend server connect aagala. Aprama try pannunga. (${err})`
+  }
+};
+
+// ─────────────────────────────────────────
 // Main App
 // ─────────────────────────────────────────
 
@@ -222,10 +323,17 @@ export default function Home() {
     if (savedCart) { try { setCartItems(JSON.parse(savedCart)); } catch (e) { } }
     const savedMessages = localStorage.getItem("kapruka_messages_v3");
     if (savedMessages) { try { setMessages(JSON.parse(savedMessages)); } catch (e) { } }
+    const savedLanguage = localStorage.getItem("kapruka_language");
+    if (savedLanguage) {
+      if (savedLanguage === "Sinhala") setLanguage("Sinhala (Unicode)");
+      else if (savedLanguage === "Tamil") setLanguage("Tamil (Unicode)");
+      else setLanguage(savedLanguage);
+    }
   }, []);
 
   useEffect(() => { localStorage.setItem("kapruka_cart", JSON.stringify(cartItems)); }, [cartItems]);
   useEffect(() => { localStorage.setItem("kapruka_messages_v3", JSON.stringify(messages)); }, [messages]);
+  useEffect(() => { localStorage.setItem("kapruka_language", language); }, [language]);
 
   useEffect(() => {
     const handleOpenCart = () => setIsCartOpen(true);
@@ -252,7 +360,13 @@ export default function Home() {
     }
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     const recognition = new SpeechRecognition();
-    recognition.lang = "en-US";
+    if (language.includes("Sinhala") || language === "Singlish") {
+      recognition.lang = "si-LK";
+    } else if (language.includes("Tamil") || language === "Tanglish") {
+      recognition.lang = "ta-LK";
+    } else {
+      recognition.lang = "en-US";
+    }
     recognition.continuous = true;
     recognition.interimResults = true;
     recognitionRef.current = recognition;
@@ -295,9 +409,10 @@ export default function Home() {
       }
     });
 
+    const t = LOCALIZATION[language] || LOCALIZATION["English"];
     const structured: AgentResponse = {
       type: "cart_update",
-      message: `Added ${item.name} to your basket! 🛒`,
+      message: t.cartAdded(item.name),
       action: "added",
       product_id: item.id,
       product_name: item.name
@@ -351,9 +466,10 @@ export default function Home() {
         alert(data.detail || "Failed to process checkout. Please try again.");
       } else {
         setShowCheckoutModal(false);
+        const t = LOCALIZATION[language] || LOCALIZATION["English"];
         const structured: AgentResponse = {
           type: "order_created",
-          message: "Your order has been created successfully! 🎉",
+          message: t.orderCreated,
           checkout_url: data.checkout_url,
           order_ref: data.order_ref,
           expires_at: "",
@@ -383,9 +499,10 @@ export default function Home() {
   const handlePaymentSuccess = async () => {
     setShowPostPaymentDialog(false);
     setCartItems([]);
+    const t = LOCALIZATION[language] || LOCALIZATION["English"];
     const structured: AgentResponse = {
       type: "text",
-      message: `Thank you for confirming! I have cleared your cart for you. You can track your order status anytime by pasting the **Order Number** sent to your email into this chat.`
+      message: t.paymentSuccessMsg
     };
     const syntheticMsg: Message = { role: "assistant", content: JSON.stringify(structured), structured_response: structured };
     setMessages(prev => [...prev, syntheticMsg]);
@@ -423,13 +540,15 @@ export default function Home() {
             name: m.name
           })),
           user_email: null,
-          cart: cartItems
+          cart: cartItems,
+          language: language
         })
       });
 
       if (!response.ok) throw new Error("Server responded with error status: " + response.status);
 
       const data = await response.json();
+      if (data.language) setLanguage(data.language);
       const structured: AgentResponse | null = data.structured_response || null;
 
       if (data.history && data.history.length > 0) {
@@ -464,14 +583,14 @@ export default function Home() {
       if (structured?.type === "order_created" && (structured as any).checkout_url) {
         setCurrentOrderRef((structured as any).order_ref || null);
       }
-
     } catch (error: any) {
+      const t = LOCALIZATION[language] || LOCALIZATION["English"];
       setMessages(prev => [
         ...prev,
         {
           role: "assistant",
-          content: JSON.stringify({ type: "text", message: `Aiyo! ⚠️ I had trouble connecting to the backend server. Please try again later. (${error.message})` }),
-          structured_response: { type: "text", message: `Aiyo! ⚠️ I had trouble connecting to the backend server. Please try again later. (${error.message})` }
+          content: JSON.stringify({ type: "text", message: t.apiErrorMsg(error.message) }),
+          structured_response: { type: "text", message: t.apiErrorMsg(error.message) }
         }
       ]);
     } finally {
@@ -491,11 +610,12 @@ export default function Home() {
       const response = await fetch(`${apiBaseUrl}/api/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: historyUpToMessage, user_email: null })
+        body: JSON.stringify({ messages: historyUpToMessage, user_email: null, language: language })
       });
 
       if (!response.ok) throw new Error("Server error: " + response.status);
       const data = await response.json();
+      if (data.language) setLanguage(data.language);
       const newStructured: AgentResponse | null = data.structured_response || null;
 
       if (data.history && data.history.length > historyUpToMessage.length) {
@@ -747,20 +867,29 @@ export default function Home() {
                   
                   <div style={{ marginBottom: "20px" }}>
                     <label style={{ display: "block", fontSize: "0.85rem", color: "#64748b", marginBottom: "8px", fontWeight: 600 }}>Language</label>
-                    <div style={{ display: "flex", gap: "8px" }}>
-                      {["English", "Sinhala", "Tamil"].map(lang => (
+                    <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                      {[
+                        { id: "English", label: "English" },
+                        { id: "Sinhala (Unicode)", label: "සිංහල (Sinhala Unicode)" },
+                        { id: "Singlish", label: "Singlish (Romanized Sinhala)" },
+                        { id: "Tamil (Unicode)", label: "தமிழ் (Tamil Unicode)" },
+                        { id: "Tanglish", label: "Tanglish (Romanized Tamil)" }
+                      ].map(lang => (
                         <button 
-                          key={lang}
-                          onClick={() => { setLanguage(lang); setIsSettingsOpen(false); }}
+                          key={lang.id}
+                          onClick={() => { setLanguage(lang.id); setIsSettingsOpen(false); }}
                           style={{ 
-                            flex: 1, padding: "6px", borderRadius: "8px", border: "1px solid",
-                            background: language === lang ? "#f3e8ff" : "#ffffff",
-                            borderColor: language === lang ? "#9333ea" : "#e2e8f0",
-                            color: language === lang ? "#7e22ce" : "#475569",
-                            fontSize: "0.85rem", fontWeight: 600, cursor: "pointer", transition: "all 0.2s"
+                            width: "100%", padding: "8px 12px", borderRadius: "8px", border: "1px solid",
+                            textAlign: "left",
+                            background: language === lang.id ? "#f3e8ff" : "#ffffff",
+                            borderColor: language === lang.id ? "#9333ea" : "#e2e8f0",
+                            color: language === lang.id ? "#7e22ce" : "#475569",
+                            fontSize: "0.85rem", fontWeight: 600, cursor: "pointer", transition: "all 0.2s",
+                            display: "flex", justifyContent: "space-between", alignItems: "center"
                           }}
                         >
-                          {lang}
+                          <span>{lang.label}</span>
+                          {language === lang.id && <span style={{ color: "#9333ea" }}>✓</span>}
                         </button>
                       ))}
                     </div>
@@ -884,7 +1013,7 @@ export default function Home() {
 
               <div style={{ textAlign: "center", maxWidth: "800px", marginBottom: "32px" }}>
                 <h1 style={{ fontSize: "2.8rem", fontWeight: 700, lineHeight: 1.2, color: "#2D2375" }}>
-                  Hi I'm <span style={{ color: "#5322B8" }}>KIKO</span>, Ready to<br />Help Shopping?
+                  {(LOCALIZATION[language] || LOCALIZATION["English"]).landingGreeting}
                 </h1>
               </div>
 
@@ -893,7 +1022,7 @@ export default function Home() {
                   <img src="/chatbot-logo.png" alt="Kiko" style={{ width: "24px", height: "24px", flexShrink: 0 }} />
                   <input
                     type="text"
-                    placeholder="Ask anything you want..."
+                    placeholder={(LOCALIZATION[language] || LOCALIZATION["English"]).inputPlaceholderEmpty}
                     value={inputText}
                     onChange={e => setInputText(e.target.value)}
                     onKeyDown={handleKeyPress}
@@ -911,13 +1040,13 @@ export default function Home() {
 
               {/* Categories */}
               <div style={{ width: "100%", maxWidth: "800px", display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "10px" }}>
-                {['Birthday Gifts', 'Flowers', 'Cakes', 'Chocolates', 'Groceries', 'Check Delivery'].map((cat) => (
+                {(LOCALIZATION[language] || LOCALIZATION["English"]).categories.map((cat) => (
                   <button
-                    key={cat}
-                    onClick={() => handleSendMessage(`Show me ${cat}`)}
+                    key={cat.original}
+                    onClick={() => handleSendMessage(`Show me ${cat.original}`)}
                     style={{ background: "#5322B8", color: "#fff", border: "none", borderRadius: "999px", padding: "6px 18px", fontSize: "0.85rem", fontWeight: 600, cursor: "pointer", transition: "all 0.2s ease" }}
                   >
-                    {cat}
+                    {cat.label}
                   </button>
                 ))}
               </div>
@@ -1032,7 +1161,7 @@ export default function Home() {
                   </button>
                   <input
                     type="text"
-                    placeholder="Ask Kapruka Agent..."
+                    placeholder={(LOCALIZATION[language] || LOCALIZATION["English"]).inputPlaceholderFloating}
                     value={inputText}
                     onChange={e => setInputText(e.target.value)}
                     onKeyDown={handleKeyPress}

@@ -271,6 +271,7 @@ CRITICAL RULES:
    - Do NOT output "APPROVED" if you are providing a correction.
    - If you cannot fix it (e.g. hallucinated products with no tool evidence), output:
      {"type": "text", "message": "I'm sorry, I couldn't find that information right now. Please try again!"}
+10. Ensure the 'message' field of the response is strictly in the user's preferred language. If the preferred language is 'Sinhala (Unicode)', it MUST be strictly in Sinhala Unicode script. If 'Singlish', it MUST be strictly in Romanized Sinhala. If 'Tamil (Unicode)', it MUST be strictly in Tamil Unicode script. If 'Tanglish', it MUST be strictly in Romanized Tamil. Do not use English or mix scripts. Do not translate the message content back to English!
 
 Review the User Request and Proposed Response below.
 """

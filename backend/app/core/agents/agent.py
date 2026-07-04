@@ -60,6 +60,7 @@ class AgentState(TypedDict):
     messages: Annotated[Sequence[BaseMessage], add_messages]
     next_node: str
     active_worker: str
+    language: str
 
 def trim_messages_for_llm(messages: Sequence[BaseMessage], max_msgs: int = 15) -> list[BaseMessage]:
     """Keep only the last N messages to save tokens. Ensures we start at a HumanMessage and preserves SystemMessages."""
@@ -225,6 +226,7 @@ async def verification_node(state: AgentState) -> dict:
 
     verification_input = (
         f"User Request: {last_user}\n\n"
+        f"Preferred Language: {state.get('language', 'English')}\n\n"
         f"Proposed Response: {last_ai}\n\n"
         f"Tool Call Evidence:\n{tool_evidence}"
     )

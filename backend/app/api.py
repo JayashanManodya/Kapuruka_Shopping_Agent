@@ -38,6 +38,7 @@ class ChatRequest(BaseModel):
     messages: list[MessageInput]
     user_email: str | None = None  # Supplied by authenticated frontend
     cart: list | None = None
+    language: str | None = "English"
 
 class CheckoutDeliveryInfo(BaseModel):
     address: str
@@ -55,6 +56,98 @@ class CheckoutRequest(BaseModel):
     delivery: CheckoutDeliveryInfo
     cart: list[CheckoutCartItem]
 
+def detect_language_from_text(text: str) -> str | None:
+    if not text:
+        return None
+    text_lower = text.lower()
+    
+    # 1. Sinhala Unicode Check (range 0D80 to 0DFF)
+    if any(0x0D80 <= ord(char) <= 0x0DFF for char in text):
+        return "Sinhala (Unicode)"
+        
+    # 2. Tamil Unicode Check (range 0B80 to 0BFF)
+    if any(0x0B80 <= ord(char) <= 0x0BFF for char in text):
+        return "Tamil (Unicode)"
+        
+    # 3. Singlish Keywords Check (highly specific Romanized Sinhala words, no English overlap)
+    singlish_keywords = [
+        "machan", "machang", "malli", "nangi", "aiya", "akka", "kohmada", "kohomada", 
+        "hari", "neda", "ne", "puluwanda", "puluwan", "ganna", "epa", "oneda", "onai", 
+        "onay", "mokada", "oyata", "mata", "karanna", "sthuthi", "stuti", "ayubowan", 
+        "badu", "wada", "salli", "hadanna", "denna", "danna", "balanna", "thiyenawada", 
+        "thiyeda", "thiyenawa", "laga", "nadda", "naha", "nehe", "wisthara", "vistara", 
+        "laaba", "ganan", "oyala", "ape", "ekak", "dekak", "thunak", "ewanna", "dapan", 
+        "kiyada", "keeyada", "keeyak", "kiyala", "kiyanna", "koheda", "monawada", 
+        "mokakda", "kauda", "kawda", "ehema", "mehema", "ehenam", "yawanna", "genna", 
+        "aranna", "karala", "kala", "kara", "kalaa"
+    ]
+    if any(word in text_lower for word in singlish_keywords):
+        return "Singlish"
+        
+    # 4. Tanglish Keywords Check (highly specific Romanized Tamil words, no English overlap)
+    tanglish_keywords = [
+        "epdi", "irukinga", "vanakkam", "vendum", "nandri", "panna", "mudiyum", "unga", 
+        "enakku", "enaku", "ungaluku", "romba", "nalla", "veetuku", "kodu", "pannu", 
+        "seyya", "kelunga", "kamunga", "panniyachu", "irukku", "illai", "irukkada", 
+        "illada", "sari", "ama", "thambi", "anna", "akka", "mama", "kudunga", "kaatunga", 
+        "pannunga", "seinga", "panunga", "vendaam"
+    ]
+    if any(word in text_lower for word in tanglish_keywords):
+        return "Tanglish"
+        
+    # 5. English Keywords Check
+    english_keywords = [
+        "show", "me", "find", "search", "get", "retrieve", "list", 
+        "cart", "basket", "checkout", "order", "delivery", "track", 
+        "please", "help", "hello", "hi", "what", "where", "how", "can"
+    ]
+    if any(word in text_lower for word in english_keywords):
+        return "English"
+        
+    return None
+
+def get_language_instruction(language: str) -> str:
+    if language == "Sinhala (Unicode)":
+        return (
+            "CRITICAL LANGUAGE RULE:\n"
+            "The user is currently conversing strictly in Sinhala Unicode script (e.g., 'කොහොමද'). "
+            "You MUST reply strictly in Sinhala Unicode script. "
+            "Do NOT reply in Singlish (Romanized Sinhala) or English. "
+            "Inside your structured JSON response, the 'message' field must contain the response in Sinhala Unicode script. "
+            "All JSON keys and other structural fields must remain strictly in English as defined."
+        )
+    elif language == "Singlish":
+        return (
+            "CRITICAL LANGUAGE RULE:\n"
+            "The user is currently conversing strictly in Singlish (Romanized Sinhala) (e.g., 'kohmada machan', 'mata cake one'). "
+            "You MUST reply strictly in Singlish. "
+            "Do NOT reply in Sinhala Unicode script or English. "
+            "Inside your structured JSON response, the 'message' field must contain the response in Singlish. "
+            "All JSON keys and other structural fields must remain strictly in English as defined."
+        )
+    elif language == "Tamil (Unicode)":
+        return (
+            "CRITICAL LANGUAGE RULE:\n"
+            "The user is currently conversing strictly in Tamil Unicode script (e.g., 'எப்படி இருக்கிறீர்கள்'). "
+            "You MUST reply strictly in Tamil Unicode script. "
+            "Do NOT reply in Tanglish (Romanized Tamil) or English. "
+            "Inside your structured JSON response, the 'message' field must contain the response in Tamil Unicode script. "
+            "All JSON keys and other structural fields must remain strictly in English as defined."
+        )
+    elif language == "Tanglish":
+        return (
+            "CRITICAL LANGUAGE RULE:\n"
+            "The user is currently conversing strictly in Tanglish (Romanized Tamil) (e.g., 'epdi irukinga', 'enakku cake vendum'). "
+            "You MUST reply strictly in Tanglish. "
+            "Do NOT reply in Tamil Unicode script or English. "
+            "Inside your structured JSON response, the 'message' field must contain the response in Tanglish. "
+            "All JSON keys and other structural fields must remain strictly in English as defined."
+        )
+    else:
+        return (
+            "LANGUAGE RULE: The user's preferred language is English. Respond strictly in English with a warm, persuasive Sri Lankan shopping-assistant vibe."
+        )
+
 # ─────────────────────────────────────────
 # Stateless Chat Endpoint
 # ─────────────────────────────────────────
@@ -66,10 +159,23 @@ async def chat(request: ChatRequest):
         
         from langchain_core.messages import HumanMessage, AIMessage, SystemMessage, ToolMessage
         
+        # Detect language from the latest user message
+        last_user_content = ""
+        for msg in reversed(request.messages):
+            if msg.role in ("user", "human") and msg.content:
+                last_user_content = msg.content
+                break
+                
+        detected_lang = detect_language_from_text(last_user_content) if last_user_content else None
+        active_language = detected_lang or request.language or "English"
+        
         # Reconstruct messages for LangChain
         messages_to_send = []
         if request.user_email:
             messages_to_send.append(SystemMessage(content=f"The current user's email is {request.user_email}."))
+            
+        # Add language instructions system message
+        messages_to_send.append(SystemMessage(content=get_language_instruction(active_language)))
             
         if request.cart and len(request.cart) > 0:
             cart_text = ", ".join([f"{item.get('product_name', 'Product')} (ID: {item.get('product_id', '')}, Qty: {item.get('quantity', 1)}, Price: LKR {item.get('price', 0)})" for item in request.cart])
@@ -159,13 +265,14 @@ async def chat(request: ChatRequest):
                     "type": "list_categories",
                     "message": "Here you go, machan! Take your time and browse through whatever catches your eye. Anything specific you're looking for, just let me know!",
                     "categories": [] # Frontend will render its own hardcoded UI for this
-                }
+                },
+                "language": active_language
             }
         # ────────────────────────────────
             
         # Invoke the stateless agent
         response = await shopping_agent.ainvoke(
-            {"messages": messages_to_send},
+            {"messages": messages_to_send, "language": active_language},
             config={"configurable": {"thread_id": "stateless"}},
         )
 
@@ -190,8 +297,16 @@ async def chat(request: ChatRequest):
             else:
                 structured_response = {"type": "text", "message": ""}
 
+        # Only refine active language from the agent's actual output if the user's input language was not explicitly detected
+        if not detected_lang:
+            response_msg = structured_response.get("message", "") if structured_response else ""
+            if response_msg:
+                refined_lang = detect_language_from_text(response_msg)
+                if refined_lang:
+                    active_language = refined_lang
+
         new_cart = current_cart.get()
-        return {"history": history_list, "cart": new_cart, "structured_response": structured_response}
+        return {"history": history_list, "cart": new_cart, "structured_response": structured_response, "language": active_language}
 
     except Exception as e:
         import traceback
