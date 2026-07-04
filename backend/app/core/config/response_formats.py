@@ -58,6 +58,7 @@ class ProductDetail(BaseModel):
 
 class OrderItem(BaseModel):
     product_id: Optional[str] = ""
+    id: Optional[str] = ""
     name: Optional[str] = ""
     product_name: Optional[str] = ""
     quantity: int = 1
