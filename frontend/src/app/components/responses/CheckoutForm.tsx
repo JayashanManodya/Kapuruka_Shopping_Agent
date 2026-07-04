@@ -24,25 +24,36 @@ interface CheckoutFormProps {
 }
 
 const VALID_CITIES = [
-  "Ampara", "Anuradhapura", "Badulla", "Batticaloa", 
+  "Ampara", "Anuradhapura", "Avissawella", "Badulla", "Batticaloa", 
   "Colombo 01", "Colombo 02", "Colombo 03", "Colombo 04", "Colombo 05", 
   "Colombo 06", "Colombo 07", "Colombo 08", "Colombo 09", "Colombo 10", 
   "Colombo 11", "Colombo 12", "Colombo 13", "Colombo 14", "Colombo 15",
-  "Galle", "Gampaha", "Hambantota", "Jaffna", "Kalutara", "Kandy", 
-  "Kegalle", "Kilinochchi", "Kurunegala", "Mannar", "Matale", "Matara", 
-  "Monaragala", "Mullaitivu", "Nuwara Eliya", "Polonnaruwa", "Puttalam", 
-  "Rathnapura", "Trincomalee", "Vavuniya"
+  "Dehiwala", "Galle", "Gampaha", "Hambantota", "Homagama", "Jaffna", 
+  "Kadawatha", "Kaduwela", "Kalutara", "Kandy", "Kegalle", "Kelaniya", 
+  "Kesbewa", "Kilinochchi", "Kiribathgoda", "Kolonnawa", "Kotte", 
+  "Kurunegala", "Maharagama", "Mannar", "Matale", "Matara", "Monaragala", 
+  "Moratuwa", "Mullaitivu", "Nuwara Eliya", "Padukka", "Peliyagoda", 
+  "Polonnaruwa", "Puttalam", "Ragama", "Rathnapura", "Ratmalana", 
+  "Trincomalee", "Vavuniya", "Wellampitiya"
 ];
 
 export default function CheckoutForm({ message, initialData, onSubmit }: CheckoutFormProps) {
-  const [formData, setFormData] = useState({
-    recipientName: initialData?.recipientName || "",
-    phone: initialData?.phone || "",
-    address: initialData?.address || "",
-    city: initialData?.city || "",
-    date: initialData?.date || "",
-    senderName: initialData?.senderName || "",
-    giftMessage: initialData?.giftMessage || "",
+  const [formData, setFormData] = useState(() => {
+    let saved = null;
+    if (typeof window !== "undefined") {
+       try {
+         saved = JSON.parse(localStorage.getItem("kapruka_saved_address") || "null");
+       } catch(e) {}
+    }
+    return {
+      recipientName: initialData?.recipientName || saved?.recipient?.name || "",
+      phone: initialData?.phone || saved?.recipient?.phone || "",
+      address: initialData?.address || saved?.delivery?.address || "",
+      city: initialData?.city || saved?.delivery?.city || "",
+      date: initialData?.date || "",
+      senderName: initialData?.senderName || "",
+      giftMessage: initialData?.giftMessage || "",
+    };
   });
 
   const [showCityDropdown, setShowCityDropdown] = useState(false);

@@ -10,9 +10,12 @@ interface Props {
   expires_at: string;
   totals: Totals;
   onProceed: (url: string) => void;
+  showSavePrompt?: boolean;
+  onSaveAddress?: () => void;
+  onDismissSaveAddress?: () => void;
 }
 
-export default function OrderCreated({ message, checkout_url, order_ref, expires_at, totals, onProceed }: Props) {
+export default function OrderCreated({ message, checkout_url, order_ref, expires_at, totals, onProceed, showSavePrompt, onSaveAddress, onDismissSaveAddress }: Props) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
       <div className="glass-panel agent-card-glow" style={{ background: "#ffffff", padding: "14px 18px", borderRadius: "16px 16px 16px 4px", color: "#333", fontSize: "0.95rem", lineHeight: 1.5, border: "1px solid var(--glass-border)", maxWidth: "88%" }}>
@@ -62,6 +65,21 @@ export default function OrderCreated({ message, checkout_url, order_ref, expires
           >
             Proceed to Checkout
           </button>
+        )}
+        
+        {showSavePrompt && (
+          <div className="animate-fade-in" style={{ background: "#4c1d95", borderRadius: "12px", padding: "16px", marginTop: "16px", border: "2px dashed rgba(255,255,255,0.4)", display: "flex", flexDirection: "column", gap: "12px" }}>
+            <div style={{ display: "flex", gap: "10px", alignItems: "flex-start" }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: "2px" }}><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path><line x1="12" y1="7" x2="12" y2="13"></line><line x1="9" y1="10" x2="15" y2="10"></line></svg>
+              <span style={{ color: "#fff", fontSize: "0.95rem", lineHeight: 1.4, fontWeight: 500 }}>
+                Save this delivery address for next time?
+              </span>
+            </div>
+            <div style={{ display: "flex", gap: "8px" }}>
+              <button onClick={onSaveAddress} style={{ background: "#facc15", color: "#1e1b4b", border: "none", borderRadius: "20px", padding: "8px 16px", fontWeight: 600, fontSize: "0.9rem", cursor: "pointer", transition: "opacity 0.2s" }} onMouseEnter={e => e.currentTarget.style.opacity="0.9"} onMouseLeave={e => e.currentTarget.style.opacity="1"}>Yes, save it</button>
+              <button onClick={onDismissSaveAddress} style={{ background: "transparent", color: "#fff", border: "1px solid rgba(255,255,255,0.3)", borderRadius: "20px", padding: "8px 16px", fontWeight: 600, fontSize: "0.9rem", cursor: "pointer", transition: "background 0.2s" }} onMouseEnter={e => e.currentTarget.style.background="rgba(255,255,255,0.1)"} onMouseLeave={e => e.currentTarget.style.background="transparent"}>Not now</button>
+            </div>
+          </div>
         )}
       </div>
     </div>

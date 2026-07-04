@@ -312,6 +312,7 @@ export default function Home() {
   const [showFeaturesModal, setShowFeaturesModal] = useState(false);
   const [selectedLangTemp, setSelectedLangTemp] = useState("English");
   const [attachedImage, setAttachedImage] = useState<string | null>(null);
+  const [dismissedSaveAddress, setDismissedSaveAddress] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -786,7 +787,15 @@ export default function Home() {
           />
         );
 
-      case "order_created":
+      case "order_created": {
+        const isLatest = msgIndex === messages.length - 1;
+        // Find the most recent order_summary before this message
+        const previousSummary = messages.slice(0, msgIndex).reverse().find((m: any) => m.structured_response?.type === "order_summary")?.structured_response as any;
+        const deliveryDetails = previousSummary?.delivery;
+        const recipientDetails = previousSummary?.recipient;
+        const hasSaved = typeof window !== "undefined" && localStorage.getItem("kapruka_saved_address");
+        const showSave = isLatest && deliveryDetails && !hasSaved && !dismissedSaveAddress;
+
         return (
           <OrderCreated
             message={sr.message}
@@ -795,8 +804,16 @@ export default function Home() {
             expires_at={sr.expires_at}
             totals={sr.totals}
             onProceed={(url) => setPaymentUrl(url)}
+            showSavePrompt={!!showSave}
+            onSaveAddress={() => {
+              const fullDetails = { delivery: deliveryDetails, recipient: recipientDetails };
+              localStorage.setItem("kapruka_saved_address", JSON.stringify(fullDetails));
+              setDismissedSaveAddress(true);
+            }}
+            onDismissSaveAddress={() => setDismissedSaveAddress(true)}
           />
         );
+      }
 
       case "track_order":
         return (
@@ -858,11 +875,13 @@ export default function Home() {
       {/* Top Branded Header */}
       <header className="top-header">
         <div className="header-logos-wrapper">
-          <img
-            src="/kapruka-logo.webp"
-            alt="Kapruka"
-            className="header-kapruka-logo"
-          />
+          <a href="https://www.kapruka.com" target="_blank" rel="noopener noreferrer" style={{ display: "flex", alignItems: "center" }}>
+            <img
+              src="/kapruka-logo.webp"
+              alt="Kapruka"
+              className="header-kapruka-logo"
+            />
+          </a>
           <div className="header-separator"></div>
           <div className="header-kiko-wrapper">
             <img

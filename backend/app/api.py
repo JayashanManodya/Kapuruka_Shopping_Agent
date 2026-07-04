@@ -3,6 +3,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import json
 from datetime import datetime, timezone
+import os
+from dotenv import load_dotenv
+load_dotenv()
 import contextvars
 
 current_cart = contextvars.ContextVar("current_cart", default=[])
@@ -11,9 +14,12 @@ from app.core.agents.agent import shopping_agent, serialize_messages
 
 app = FastAPI(title="Kapruka Shopping Agent API (Stateless)")
 
+allowed_origins_str = os.getenv("ALLOWED_ORIGINS", "")
+allowed_origins = [origin.strip() for origin in allowed_origins_str.split(",") if origin.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000", "https://kiko-kapuruka.vercel.app", "https://kapuruka-shopping-agent.vercel.app"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
