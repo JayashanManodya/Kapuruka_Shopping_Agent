@@ -69,7 +69,13 @@ function KaprukaLogo() {
 const parseStructuredResponse = (raw: string | null | undefined): AgentResponse | null => {
   if (!raw) return null;
   try {
-    const obj = JSON.parse(raw);
+    let cleanRaw = raw.trim();
+    if (cleanRaw.startsWith("```json")) {
+      cleanRaw = cleanRaw.replace(/^```json\s*/, "").replace(/\s*```$/, "");
+    } else if (cleanRaw.startsWith("```")) {
+      cleanRaw = cleanRaw.replace(/^```\s*/, "").replace(/\s*```$/, "");
+    }
+    const obj = JSON.parse(cleanRaw);
     if (obj && typeof obj.type === "string" && typeof obj.message === "string") {
       return obj as AgentResponse;
     }

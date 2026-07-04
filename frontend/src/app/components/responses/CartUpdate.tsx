@@ -9,28 +9,33 @@ interface Props {
 }
 
 export default function CartUpdate({ message, action, product_name, onViewCart }: Props) {
-  const actionIcon = action === "removed" ? "🗑" : action === "cleared" ? "🧹" : "🛒";
+  const actionIcon = action === "removed" ? "🗑️" : action === "cleared" ? "🧹" : "🛒";
+  const title = action === "removed" ? "Item Removed" : action === "cleared" ? "Cart Cleared" : "Cart Updated";
 
   return (
-    <div className="animate-fade-in glass-panel" style={{
-      background: "#ffffff", padding: "14px 18px", borderRadius: "16px 16px 16px 4px",
-      color: "#333", fontSize: "0.95rem", lineHeight: 1.5,
-      border: "1px solid var(--glass-border)", maxWidth: "88%",
-      display: "flex", flexDirection: "column", gap: "10px"
-    }}>
-      <div>{actionIcon} {message}</div>
+    <div className="animate-fade-in" style={{ background: "#3b2667", borderRadius: "16px", padding: "20px", maxWidth: "420px", boxShadow: "0 8px 32px rgba(0,0,0,0.2)", display: "flex", flexDirection: "column", gap: "12px" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "8px" }}>
+        <span style={{ fontSize: "1.2rem" }}>{actionIcon}</span>
+        <span style={{ fontWeight: 700, fontSize: "1.1rem", color: "#fff" }}>{title}</span>
+      </div>
+      
+      <div style={{ color: "#e2d9f3", fontSize: "0.95rem", lineHeight: 1.5, marginBottom: "8px" }}>
+        {message}
+      </div>
+
       <button
         onClick={onViewCart}
         style={{
-          background: "transparent", color: "var(--brand-purple)",
-          border: "1px solid var(--brand-purple)", padding: "6px 16px",
-          borderRadius: "20px", fontWeight: 600, fontSize: "0.85rem",
-          cursor: "pointer", alignSelf: "flex-start", transition: "all 0.2s"
+          background: "#facc15", color: "#1e1b4b",
+          border: "none", padding: "8px 16px",
+          borderRadius: "8px", fontWeight: 700, fontSize: "0.9rem",
+          cursor: "pointer", alignSelf: "flex-start", transition: "all 0.2s",
+          boxShadow: "0 4px 12px rgba(250, 204, 21, 0.3)"
         }}
-        onMouseEnter={e => { e.currentTarget.style.background = "rgba(76,29,149,0.07)"; }}
-        onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
+        onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-1px)"; }}
+        onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; }}
       >
-        View Cart →
+        View Cart
       </button>
     </div>
   );

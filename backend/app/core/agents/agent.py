@@ -122,16 +122,25 @@ def _has_checkout_details(messages) -> bool:
         r'(?:\+94|0)[\s\-]?\d[\s\-]?\d[\s\-]?\d[\s\-]?\d[\s\-]?\d[\s\-]?\d[\s\-]?\d[\s\-]?\d[\s\-]?\d',
         human_text
     ))
-    # Date: YYYY-MM-DD or YYYY/MM/DD
-    has_date = bool(re.search(r'20\d{2}[-/]\d{2}[-/]\d{2}', human_text))
-    # Location: city name or address keyword
-    has_location = bool(re.search(
-        r'\b(colombo|kandy|galle|matara|kurunegala|jaffna|negombo|rathnapura|badulla|'
-        r'kalutara|moratuwa|gampaha|anuradhapura|batticaloa|trincomalee|puttalam|'
-        r'street|road|lane|mawatha|avenue|no\.|prince|deliver to|address)\b',
+    # Date: YYYY-MM-DD, YYYY/MM/DD, or natural like "2026 june 24", "24 june", "today", "tomorrow"
+    has_date = bool(re.search(
+        r'20\d{2}[-/]\d{2}[-/]\d{2}|'
+        r'20\d{2}\s+[a-z]{3,9}\s+\d{1,2}|'
+        r'\d{1,2}(st|nd|rd|th)?\s+[a-z]{3,9}\s+(20\d{2})?|'
+        r'[a-z]{3,9}\s+\d{1,2}(st|nd|rd|th)?(\s+20\d{2})?|'
+        r'\b(today|tomorrow)\b', 
         human_text
     ))
-    return has_phone and has_date and has_location
+    # Location: city name or address keyword (optional for the gatekeeper, let LLM handle typos)
+    has_location = bool(re.search(
+        r'\b(colombo|kandy|galle|matara|kurunegala|jaffna|negombo|rath?napura|rattnapura|badulla|'
+        r'kalutara|moratuwa|gampaha|anuradhapura|batticaloa|trincomalee|puttalam|'
+        r'street|road|lane|mawatha|avenue|no\.|prince|deliver to|address|city)\b',
+        human_text
+    ))
+    # As long as they provided at least some checkout-like details (like a phone number or date),
+    # let the LLM handle the rest (including misspelled cities or missing fields).
+    return has_phone or has_date or has_location
 
 
 def _is_confirming_order_summary(messages) -> bool:
@@ -166,18 +175,7 @@ async def call_checkout_agent(state: AgentState) -> dict:
         response = await checkout_agent_node.ainvoke({"messages": msgs})
         return {"messages": response["messages"]}
 
-    # Hard guard: if user hasn't provided checkout details yet, force the collect-details response
-    if not _has_checkout_details(all_messages):
-        forced_response = (
-            '{"type": "text", "message": "Sure thing, machan! Let\'s get this sorted!\\n\\n'
-            'To complete your order, I just need a few details from you:\\n\\n'
-            '- Recipient Name & Phone Number\\n'
-            '- Delivery Address & City\\n'
-            '- Delivery Date (e.g. 2026-07-10)\\n'
-            '- Your Name (as the sender)\\n\\n'
-            'Once you share these, I\'ll get everything prepped right away!"}'
-        )
-        return {"messages": msgs + [AIMessage(content=forced_response)]}
+    # All requests go straight to the LLM now, letting the agent handle missing details directly.
 
     response = await checkout_agent_node.ainvoke({"messages": msgs})
     return {"messages": response["messages"]}

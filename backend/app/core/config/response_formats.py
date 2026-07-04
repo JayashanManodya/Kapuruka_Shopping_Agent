@@ -116,8 +116,8 @@ class CartUpdateResponse(BaseModel):
     type: Literal["cart_update"]
     message: str
     action: str = ""           # "added" | "removed" | "updated" | "cleared"
-    product_id: str = ""
-    product_name: str = ""
+    product_id: Optional[str] = None
+    product_name: Optional[str] = None
 
 
 class OrderSummaryResponse(BaseModel):
