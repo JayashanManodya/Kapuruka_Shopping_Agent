@@ -386,7 +386,7 @@ html, body {
   }
   
   .top-header {
-    padding: 16px 20px;
+    padding: 16px 8px;
   }
   
   .main-container {
@@ -435,5 +435,140 @@ html, body {
 
   .hide-on-mobile {
     display: none !important;
+  }
+}
+
+/* Responsive Chat Feed and Bubbles */
+.chat-feed-area {
+  padding: 24px;
+}
+.user-msg-bubble {
+  max-width: 75%;
+  padding: 14px 18px;
+  font-size: 0.95rem;
+}
+.ai-msg-container {
+  gap: 10px;
+}
+.avatar-icon {
+  width: 36px;
+  height: 36px;
+}
+.floating-input-wrapper {
+  padding: 20px 24px;
+}
+.floating-input-inner {
+  padding: 8px 16px;
+}
+.input-text-field {
+  font-size: 1rem;
+}
+.home-logo {
+  width: 128px;
+  height: 128px;
+}
+.home-title {
+  font-size: 2.8rem;
+}
+.home-input-container {
+  padding: 12px 24px;
+}
+.header-action-btn {
+  width: 48px;
+  height: 48px;
+  padding: 8px;
+}
+.header-action-btn svg {
+  width: 24px;
+  height: 24px;
+}
+.header-logos-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.header-kapruka-logo {
+  height: auto;
+  width: 140px;
+  margin-right: -12px;
+}
+.header-separator {
+  height: 28px;
+  width: 2px;
+  background: rgba(83, 34, 184, 0.2);
+  border-radius: 2px;
+}
+.header-kiko-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.header-kiko-logo {
+  width: 36px;
+  height: 36px;
+  margin-top: -6px;
+}
+
+@media (max-width: 768px) {
+  .chat-feed-area {
+    padding: 8px 4px;
+  }
+  .user-msg-bubble {
+    max-width: 92%;
+    padding: 8px 12px;
+    font-size: 0.85rem;
+  }
+  .ai-msg-container {
+    gap: 6px;
+  }
+  .avatar-icon {
+    width: 24px;
+    height: 24px;
+  }
+  .floating-input-wrapper {
+    padding: 8px 12px;
+  }
+  .floating-input-inner {
+    padding: 4px 10px;
+  }
+  .input-text-field {
+    font-size: 0.85rem;
+  }
+  .home-logo {
+    width: 80px;
+    height: 80px;
+  }
+  .home-title {
+    font-size: 1.8rem;
+  }
+  .home-input-container {
+    padding: 8px 16px;
+  }
+  .header-action-btn {
+    width: 36px;
+    height: 36px;
+    padding: 6px;
+  }
+  .header-action-btn svg {
+    width: 18px;
+    height: 18px;
+  }
+  .header-logos-wrapper {
+    gap: 8px;
+  }
+  .header-kapruka-logo {
+    width: 115px;
+    margin-right: -8px;
+  }
+  .header-separator {
+    height: 24px;
+  }
+  .header-kiko-wrapper {
+    gap: 6px;
+  }
+  .header-kiko-logo {
+    width: 30px;
+    height: 30px;
+    margin-top: -4px;
   }
 }

@@ -853,18 +853,18 @@ export default function Home() {
 
       {/* Top Branded Header */}
       <header className="top-header">
-        <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+        <div className="header-logos-wrapper">
           <img
             src="/kapruka-logo.webp"
             alt="Kapruka"
-            style={{ height: "auto", width: "140px", marginRight: "-12px" }}
+            className="header-kapruka-logo"
           />
-          <div style={{ height: "28px", width: "2px", background: "rgba(83, 34, 184, 0.2)", borderRadius: "2px" }}></div>
-          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <div className="header-separator"></div>
+          <div className="header-kiko-wrapper">
             <img
               src="/chatbot-logo.png"
               alt="KIKO"
-              style={{ width: "36px", height: "36px", marginTop: "-6px" }}
+              className="header-kiko-logo"
             />
             <span className="hide-on-mobile" style={{ fontSize: "1.3rem", fontWeight: 800, color: "#2D2375", letterSpacing: "0.5px" }}>KIKO</span>
           </div>
@@ -872,14 +872,16 @@ export default function Home() {
         <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
           <button
             onClick={resetChat}
-            style={{ background: "#5322B8", border: "none", borderRadius: "50%", padding: "8px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", width: "48px", height: "48px", color: "#fff", boxShadow: "0 4px 6px rgba(0,0,0,0.1)" }}
+            className="header-action-btn"
+            style={{ background: "#5322B8", border: "none", borderRadius: "50%", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", boxShadow: "0 4px 6px rgba(0,0,0,0.1)" }}
             aria-label="Reset Chat"
           >
-            <RotateCcw size={24} strokeWidth={1.5} />
+            <RotateCcw strokeWidth={1.5} />
           </button>
           <button
             onClick={() => setIsCartOpen(true)}
-            style={{ position: "relative", background: "#5322B8", border: "none", borderRadius: "50%", padding: "8px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", width: "48px", height: "48px", color: "#fff", boxShadow: "0 4px 6px rgba(0,0,0,0.1)" }}
+            className="header-action-btn"
+            style={{ position: "relative", background: "#5322B8", border: "none", borderRadius: "50%", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", boxShadow: "0 4px 6px rgba(0,0,0,0.1)" }}
             aria-label="Cart"
           >
             {cartItems.length > 0 && (
@@ -887,15 +889,16 @@ export default function Home() {
                 {cartItems.reduce((acc, i) => acc + i.quantity, 0)}
               </span>
             )}
-            <ShoppingCart size={24} strokeWidth={1.5} />
+            <ShoppingCart strokeWidth={1.5} />
           </button>
           <div style={{ position: "relative" }}>
             <button
               onClick={() => setIsSettingsOpen(!isSettingsOpen)}
-              style={{ background: "#5322B8", border: "none", borderRadius: "50%", padding: "8px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", width: "48px", height: "48px", color: "#fff", boxShadow: "0 4px 6px rgba(0,0,0,0.1)" }}
+              className="header-action-btn"
+              style={{ background: "#5322B8", border: "none", borderRadius: "50%", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", boxShadow: "0 4px 6px rgba(0,0,0,0.1)" }}
               aria-label="Settings"
             >
-              <Settings size={24} strokeWidth={1.5} />
+              <Settings strokeWidth={1.5} />
             </button>
             {isSettingsOpen && (
               <>
@@ -1052,13 +1055,14 @@ export default function Home() {
                   <img
                     src="/chatbot-logo.png"
                     alt="Kapruka AI Chatbot"
-                    style={{ width: "128px", height: "128px" }}
+                    className="home-logo"
+                    style={{ objectFit: "contain" }}
                   />
                 </div>
               </div>
 
               <div style={{ textAlign: "center", maxWidth: "800px", marginBottom: "32px" }}>
-                <h1 style={{ fontSize: "2.8rem", fontWeight: 700, lineHeight: 1.2, color: "#2D2375" }}>
+                <h1 className="home-title" style={{ fontWeight: 700, lineHeight: 1.2, color: "#2D2375" }}>
                   {(LOCALIZATION[language] || LOCALIZATION["English"]).landingGreeting}
                 </h1>
               </div>
@@ -1070,7 +1074,7 @@ export default function Home() {
                     <button onClick={() => setAttachedImage(null)} style={{ position: "absolute", top: "-8px", right: "-8px", background: "#ef4444", color: "#fff", border: "none", borderRadius: "50%", width: "24px", height: "24px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "14px", fontWeight: "bold" }}>×</button>
                   </div>
                 )}
-                <div className="search-glow" style={{ background: "#fff", borderRadius: "999px", padding: "12px 24px", display: "flex", alignItems: "center", gap: "12px" }}>
+                <div className="search-glow home-input-container" style={{ background: "#fff", borderRadius: "999px", display: "flex", alignItems: "center", gap: "12px" }}>
                   <img src="/chatbot-logo.png" alt="Kiko" style={{ width: "24px", height: "24px", flexShrink: 0 }} />
                   <input
                     type="text"
@@ -1118,7 +1122,7 @@ export default function Home() {
           ) : (
             <>
               {/* Messages Feed */}
-              <div style={{ flex: 1, overflowY: "auto", overflowX: "hidden", padding: "24px", display: "flex", flexDirection: "column", alignItems: "center" }}>
+              <div className="chat-feed-area" style={{ flex: 1, overflowY: "auto", overflowX: "hidden", display: "flex", flexDirection: "column", alignItems: "center" }}>
                 <div style={{ width: "100%", maxWidth: "800px", display: "flex", flexDirection: "column", gap: "20px" }}>
 
                   {messages.map((msg, index) => {
@@ -1147,13 +1151,13 @@ export default function Home() {
                     if (isUser) {
                       return (
                         <div key={index} className="animate-fade-in" style={{ alignSelf: "flex-end", maxWidth: "100%", display: "flex", flexDirection: "row", alignItems: "flex-end", gap: "10px", width: "100%", justifyContent: "flex-end" }}>
-                          <div style={{ background: "var(--brand-purple-light)", padding: "14px 18px", borderRadius: "16px 16px 4px 16px", color: "#fff", fontSize: "0.95rem", lineHeight: 1.5, whiteSpace: "pre-wrap", wordBreak: "break-word", overflowWrap: "anywhere", border: "none", maxWidth: "75%", display: "flex", flexDirection: "column", gap: "8px" }}>
+                          <div className="user-msg-bubble" style={{ background: "var(--brand-purple-light)", borderRadius: "16px 16px 4px 16px", color: "#fff", lineHeight: 1.5, whiteSpace: "pre-wrap", wordBreak: "break-word", overflowWrap: "anywhere", border: "none", display: "flex", flexDirection: "column", gap: "8px" }}>
                             {msg.image_base64 && (
                               <img src={msg.image_base64} alt="User attached" style={{ maxWidth: "100%", borderRadius: "8px", maxHeight: "200px", objectFit: "contain" }} />
                             )}
                             {renderFormattedText(msg.content)}
                           </div>
-                          <img src="/user-icon.png" alt="User" style={{ width: 36, height: 36, objectFit: "contain", flexShrink: 0 }} />
+                          <img src="/user-icon.png" alt="User" className="avatar-icon" style={{ objectFit: "contain", flexShrink: 0 }} />
                         </div>
                       );
                     }
@@ -1167,8 +1171,8 @@ export default function Home() {
                     if (!sr) return null;
 
                     return (
-                      <div key={index} className="animate-fade-in" style={{ alignSelf: "flex-start", maxWidth: "100%", display: "flex", flexDirection: "row", alignItems: "flex-end", gap: "10px", width: "100%" }}>
-                        <img src="/chatbot-logo.png" alt="KIKO" style={{ width: 36, height: 36, objectFit: "contain", flexShrink: 0 }} />
+                      <div key={index} className="animate-fade-in ai-msg-container" style={{ alignSelf: "flex-start", maxWidth: "100%", display: "flex", flexDirection: "row", alignItems: "flex-end", width: "100%" }}>
+                        <img src="/chatbot-logo.png" alt="KIKO" className="avatar-icon" style={{ objectFit: "contain", flexShrink: 0 }} />
                         <div style={{ display: "flex", flexDirection: "column", gap: "8px", flex: 1, minWidth: 0 }}>
                           {renderStructuredResponse(sr, index)}
                         </div>
@@ -1193,12 +1197,11 @@ export default function Home() {
               </div>
 
               {/* Input Bar (Floating) */}
-              <div style={{
+              <div className="floating-input-wrapper" style={{
                 position: "absolute",
                 bottom: 0,
                 left: 0,
                 right: 0,
-                padding: "20px 24px",
                 display: "flex",
                 flexDirection: "column",
                 alignItems: "center",
@@ -1212,13 +1215,12 @@ export default function Home() {
                     <button onClick={() => setAttachedImage(null)} style={{ position: "absolute", top: "-8px", right: "-8px", background: "#ef4444", color: "#fff", border: "none", borderRadius: "50%", width: "24px", height: "24px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "14px", fontWeight: "bold" }}>×</button>
                   </div>
                 )}
-                <div style={{
+                <div className="floating-input-inner" style={{
                   display: "flex",
                   gap: "12px",
                   position: "relative",
                   alignItems: "center",
                   background: "#fff",
-                  padding: "8px 16px",
                   borderRadius: "30px",
                   width: "100%",
                   maxWidth: "800px",
@@ -1230,12 +1232,13 @@ export default function Home() {
                   </button>
                   <input
                     type="text"
+                    className="input-text-field"
                     placeholder={(LOCALIZATION[language] || LOCALIZATION["English"]).inputPlaceholderFloating}
                     value={inputText}
                     onChange={e => setInputText(e.target.value)}
                     onKeyDown={handleKeyPress}
                     disabled={isLoading}
-                    style={{ flex: 1, background: "transparent", border: "none", color: "#333", fontSize: "1rem", outline: "none", height: "40px" }}
+                    style={{ flex: 1, background: "transparent", border: "none", color: "#333", outline: "none", height: "40px" }}
                   />
                   <button
                     onClick={() => (inputText.trim() || attachedImage) ? handleSendMessage(inputText) : toggleListening()}
