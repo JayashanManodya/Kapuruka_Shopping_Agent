@@ -307,6 +307,9 @@ export default function Home() {
   const [loadingMoreIds, setLoadingMoreIds] = useState<Record<number, boolean>>({});
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [language, setLanguage] = useState("English");
+  const [showLanguageModal, setShowLanguageModal] = useState(true);
+  const [showFeaturesModal, setShowFeaturesModal] = useState(false);
+  const [selectedLangTemp, setSelectedLangTemp] = useState("English");
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [isListening, setIsListening] = useState(false);
@@ -325,9 +328,12 @@ export default function Home() {
     if (savedMessages) { try { setMessages(JSON.parse(savedMessages)); } catch (e) { } }
     const savedLanguage = localStorage.getItem("kapruka_language");
     if (savedLanguage) {
-      if (savedLanguage === "Sinhala") setLanguage("Sinhala (Unicode)");
-      else if (savedLanguage === "Tamil") setLanguage("Tamil (Unicode)");
-      else setLanguage(savedLanguage);
+      let resolvedLang = savedLanguage;
+      if (savedLanguage === "Sinhala") resolvedLang = "Sinhala (Unicode)";
+      else if (savedLanguage === "Tamil") resolvedLang = "Tamil (Unicode)";
+      
+      setLanguage(resolvedLang);
+      setSelectedLangTemp(resolvedLang);
     }
   }, []);
 
@@ -1200,17 +1206,161 @@ export default function Home() {
         </div>
       )}
 
-      {/* Post-payment dialog */}
-      {showPostPaymentDialog && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 500, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <div style={{ background: "#fff", borderRadius: "16px", padding: "32px", maxWidth: "400px", width: "90%", textAlign: "center" }}>
-            <div style={{ fontSize: "2rem", marginBottom: "16px" }}>🎉</div>
-            <h2 style={{ fontSize: "1.3rem", fontWeight: 700, marginBottom: "12px", color: "#1e1b4b" }}>Did you complete the payment?</h2>
-            <p style={{ color: "#6b7280", marginBottom: "24px", fontSize: "0.95rem" }}>Let us know so we can clear your cart and update your order status.</p>
-            <div style={{ display: "flex", gap: "12px" }}>
-              <button onClick={handlePaymentSuccess} style={{ flex: 1, background: "#4c1d95", color: "#fff", border: "none", padding: "12px", borderRadius: "8px", fontWeight: 600, cursor: "pointer" }}>Yes, I paid!</button>
-              <button onClick={handlePaymentPending} style={{ flex: 1, background: "transparent", color: "#4c1d95", border: "1px solid #4c1d95", padding: "12px", borderRadius: "8px", fontWeight: 600, cursor: "pointer" }}>Not yet</button>
+      {/* Language selection modal */}
+      {showLanguageModal && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(15, 23, 42, 0.45)", backdropFilter: "blur(4px)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: "20px" }}>
+          <div style={{ background: "#ffffff", borderRadius: "24px", padding: "32px", width: "100%", maxWidth: "480px", boxShadow: "0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04)", position: "relative" }}>
+            
+            {/* Header section */}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "6px", color: "#6b21a8", fontSize: "0.8rem", fontWeight: 700, letterSpacing: "0.05em", textTransform: "uppercase", marginBottom: "8px" }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
+              LANGUAGE
             </div>
+            
+            <h2 style={{ fontSize: "1.8rem", fontWeight: 800, color: "#0f172a", margin: "0 0 12px 0", textAlign: "center" }}>
+              <span style={{ backgroundColor: "#fef08a", padding: "2px 10px", borderRadius: "6px" }}>Choose your language</span>
+            </h2>
+            
+            <p style={{ color: "#475569", fontSize: "0.95rem", textAlign: "center", lineHeight: 1.5, margin: "0 0 24px 0", padding: "0 10px" }}>
+              Pick how you want Kapruka Agent and the app to speak with you. You can change this anytime from Saved info.
+            </p>
+            
+            {/* Stack of options */}
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "28px" }}>
+              {[
+                { id: "English", title: "English", subtitle: "English" },
+                { id: "Sinhala (Unicode)", title: "සිංහල", subtitle: "Sinhala" },
+                { id: "Tamil (Unicode)", title: "தமிழ்", subtitle: "Tamil" }
+              ].map(option => {
+                const isSelected = selectedLangTemp === option.id;
+                return (
+                  <button
+                    key={option.id}
+                    onClick={() => setSelectedLangTemp(option.id)}
+                    style={{
+                      width: "100%",
+                      padding: "16px 20px",
+                      borderRadius: "16px",
+                      border: isSelected ? "2px solid #581c87" : "1px solid #e2e8f0",
+                      background: isSelected ? "#f3e8ff" : "#ffffff",
+                      textAlign: "left",
+                      cursor: "pointer",
+                      transition: "all 0.2s",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "2px",
+                      outline: "none"
+                    }}
+                  >
+                    <span style={{ fontSize: "1.1rem", fontWeight: 700, color: isSelected ? "#581c87" : "#0f172a" }}>
+                      {option.title}
+                    </span>
+                    <span style={{ fontSize: "0.85rem", color: isSelected ? "#7e22ce" : "#64748b" }}>
+                      {option.subtitle}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+            
+            {/* Action button */}
+            <button
+              onClick={() => {
+                setLanguage(selectedLangTemp);
+                setShowLanguageModal(false);
+                setShowFeaturesModal(true);
+              }}
+              style={{
+                width: "100%",
+                background: "#4c1d95",
+                color: "#ffffff",
+                border: "none",
+                padding: "14px",
+                borderRadius: "9999px",
+                fontWeight: 700,
+                fontSize: "1rem",
+                cursor: "pointer",
+                transition: "background 0.2s"
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = "#5b21b6")}
+              onMouseLeave={(e) => (e.currentTarget.style.background = "#4c1d95")}
+            >
+              Continue
+            </button>
+            
+          </div>
+        </div>
+      )}
+
+      {/* KIKO features modal */}
+      {showFeaturesModal && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(15, 23, 42, 0.45)", backdropFilter: "blur(4px)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: "20px" }}>
+          <div style={{ background: "#ffffff", borderRadius: "24px", padding: "32px", width: "100%", maxWidth: "480px", boxShadow: "0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04)", position: "relative" }}>
+            
+            {/* Header section */}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "6px", color: "#6b21a8", fontSize: "0.8rem", fontWeight: 700, letterSpacing: "0.05em", textTransform: "uppercase", marginBottom: "8px" }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+              FEATURES
+            </div>
+            
+            <h2 style={{ fontSize: "1.8rem", fontWeight: 800, color: "#0f172a", margin: "0 0 12px 0", textAlign: "center" }}>
+              <span style={{ backgroundColor: "#fef08a", padding: "2px 10px", borderRadius: "6px" }}>Meet KIKO!</span>
+            </h2>
+            
+            <p style={{ color: "#475569", fontSize: "0.95rem", textAlign: "center", lineHeight: 1.5, margin: "0 0 24px 0" }}>
+              Your personal AI shopping assistant for Kapruka. Here is what I can help you do:
+            </p>
+            
+            {/* List of features */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "24px" }}>
+              {[
+                { icon: "🔍", title: "Browse & Search", desc: "Browse, search and recommendation for you." },
+                { icon: "🛒", title: "Manage Basket", desc: "Add, remove & view items." },
+                { icon: "🚚", title: "Check Delivery", desc: "Verify cities & delivery fees." },
+                { icon: "💳", title: "Secure Checkout", desc: "Place orders directly in LKR." },
+                { icon: "📦", title: "Order Tracking", desc: "Track shipment in real-time." },
+                { icon: "🎙️", title: "Talk Live with Agent", desc: "Tap mic and speak — Agent replies out loud." }
+              ].map((f, idx) => (
+                <div key={idx} style={{ 
+                  display: "flex", 
+                  gap: "10px", 
+                  alignItems: "flex-start", 
+                  padding: "10px 12px", 
+                  borderRadius: "12px", 
+                  border: "1px solid #f1f5f9", 
+                  background: "#f8fafc",
+                  gridColumn: "span 1"
+                }}>
+                  <span style={{ fontSize: "1.3rem", lineHeight: 1 }}>{f.icon}</span>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+                    <strong style={{ fontSize: "0.85rem", color: "#0f172a" }}>{f.title}</strong>
+                    <span style={{ fontSize: "0.75rem", color: "#64748b", lineHeight: 1.3 }}>{f.desc}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+            
+            {/* Action button */}
+            <button
+              onClick={() => setShowFeaturesModal(false)}
+              style={{
+                width: "100%",
+                background: "#4c1d95",
+                color: "#ffffff",
+                border: "none",
+                padding: "14px",
+                borderRadius: "9999px",
+                fontWeight: 700,
+                fontSize: "1rem",
+                cursor: "pointer",
+                transition: "background 0.2s"
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = "#5b21b6")}
+              onMouseLeave={(e) => (e.currentTarget.style.background = "#4c1d95")}
+            >
+              Let's Shop!
+            </button>
+            
           </div>
         </div>
       )}
