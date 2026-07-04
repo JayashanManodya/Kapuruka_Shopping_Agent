@@ -43,20 +43,25 @@ export default function ReadCart({ message, items, total, onViewCart }: Props) {
         {items && items.length > 0 ? (
           <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginBottom: "8px" }}>
             {items.map((item, i) => (
-              <div key={i} style={{ display: "flex", justifyContent: "space-between", color: "#444", fontSize: "0.9rem" }}>
-                <div style={{ display: "flex", flexDirection: "column" }}>
-                  <span>{item.name || item.product_name} x{item.quantity}</span>
-                  {(item.product_id) && (
-                    <span style={{ fontSize: "0.75rem", color: "#888", fontFamily: "monospace" }}>{item.product_id}</span>
-                  )}
+              <React.Fragment key={i}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", color: "#444", fontSize: "0.9rem" }}>
+                  <div style={{ display: "flex", flexDirection: "column", paddingRight: "12px" }}>
+                    <span>{item.name || item.product_name} x{item.quantity}</span>
+                    {(item.product_id) && (
+                      <span style={{ fontSize: "0.75rem", color: "#888", fontFamily: "monospace" }}>{item.product_id}</span>
+                    )}
+                  </div>
+                  <span style={{ fontWeight: 600, whiteSpace: "nowrap", textAlign: "right" }}>LKR {((item.price || 0) * (item.quantity || 1)).toLocaleString()}</span>
                 </div>
-                <span style={{ fontWeight: 600 }}>LKR {((item.price || 0) * (item.quantity || 1)).toLocaleString()}</span>
-              </div>
+                {i < items.length - 1 && (
+                  <div style={{ height: "1px", background: "rgba(0,0,0,0.06)", margin: "4px 0" }} />
+                )}
+              </React.Fragment>
             ))}
             <div style={{ height: "1px", background: "#eee", margin: "8px 0" }} />
             <div style={{ display: "flex", justifyContent: "space-between", color: "#333", fontSize: "1rem", fontWeight: 700 }}>
               <span>Total</span>
-              <span>LKR {displayTotal.toLocaleString()}</span>
+              <span style={{ color: "#16a34a" }}>LKR {displayTotal.toLocaleString()}</span>
             </div>
           </div>
         ) : (
