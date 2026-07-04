@@ -395,7 +395,7 @@ export default function Home() {
       for (let i = 0; i < event.results.length; ++i) finalAndInterim += event.results[i][0].transcript;
       setInputText(initialTextRef.current + finalAndInterim);
       if (silenceTimeoutRef.current) clearTimeout(silenceTimeoutRef.current);
-      silenceTimeoutRef.current = setTimeout(() => recognition.stop(), 2500);
+      silenceTimeoutRef.current = setTimeout(() => recognition.stop(), 2000);
     };
     recognition.onerror = (event: any) => {
       if (event.error === "aborted") { setIsListening(false); return; }
@@ -1090,6 +1090,7 @@ export default function Home() {
                     style={{ flex: 1, background: "transparent", border: "none", color: "#374151", fontSize: "1rem", outline: "none" }}
                   />
                   <button 
+                    id="send-msg-btn"
                     onClick={() => (inputText.trim() || attachedImage) ? handleSendMessage(inputText) : toggleListening()} 
                     style={{ background: "transparent", border: "none", cursor: "pointer", padding: "6px", display: "flex", alignItems: "center", justifyContent: "center", color: "#4b5563" }}
                   >
