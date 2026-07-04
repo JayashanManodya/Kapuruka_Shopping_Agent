@@ -21,11 +21,11 @@ interface Props {
 export default function TrackOrder({ message, order_ref, status, timeline, recipient, delivery, payment, items }: Props) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-      <div className="glass-panel" style={{ background: "#ffffff", padding: "14px 18px", borderRadius: "16px 16px 16px 4px", color: "#333", fontSize: "0.95rem", lineHeight: 1.5, border: "1px solid var(--glass-border)", maxWidth: "88%" }}>
+      <div className="glass-panel agent-card-glow" style={{ background: "#ffffff", padding: "14px 18px", borderRadius: "16px 16px 16px 4px", color: "#333", fontSize: "0.95rem", lineHeight: 1.5, border: "1px solid var(--glass-border)", maxWidth: "88%" }}>
         {message}
       </div>
 
-      <div className="animate-fade-in" style={{ background: "#3b2667", borderRadius: "16px", padding: "20px", maxWidth: "460px", boxShadow: "0 8px 32px rgba(0,0,0,0.3)" }}>
+      <div className="animate-fade-in agent-card-glow" style={{ background: "#3b2667", borderRadius: "16px", padding: "20px", maxWidth: "460px", boxShadow: "0 8px 32px rgba(0,0,0,0.3)" }}>
         {/* Header */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
           <div>

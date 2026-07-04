@@ -27,12 +27,12 @@ export default function ProductDetail({ message, product, onAddToCart }: Props) 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
       {/* Intro bubble */}
-      <div className="glass-panel" style={{ background: "#ffffff", padding: "14px 18px", borderRadius: "16px 16px 16px 4px", color: "#333", fontSize: "0.95rem", lineHeight: 1.5, border: "1px solid var(--glass-border)", maxWidth: "88%" }}>
+      <div className="glass-panel agent-card-glow" style={{ background: "#ffffff", padding: "14px 18px", borderRadius: "16px 16px 16px 4px", color: "#333", fontSize: "0.95rem", lineHeight: 1.5, border: "1px solid var(--glass-border)", maxWidth: "88%" }}>
         {message}
       </div>
 
       {/* Product card */}
-      <div className="animate-fade-in" style={{ background: "#ffffff", borderRadius: "16px", border: "1px solid #e5e7eb", maxWidth: "420px", overflow: "hidden", boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)" }}>
+      <div className="animate-fade-in agent-card-glow" style={{ background: "#ffffff", borderRadius: "16px", border: "1px solid #e5e7eb", maxWidth: "420px", overflow: "hidden", boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)" }}>
         {/* Main image */}
         {mainImage && (
           <div style={{ padding: "16px", background: "#f8f9fa", display: "flex", justifyContent: "center" }}>

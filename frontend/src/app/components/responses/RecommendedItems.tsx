@@ -31,7 +31,7 @@ export default function RecommendedItems({ message, items, onAddToCart, onViewDe
     <div style={{ width: "100%" }}>
       {/* Intro message bubble */}
       <div
-        className="glass-panel"
+        className="glass-panel agent-card-glow"
         style={{
           background: "#ffffff",
           padding: "14px 18px",

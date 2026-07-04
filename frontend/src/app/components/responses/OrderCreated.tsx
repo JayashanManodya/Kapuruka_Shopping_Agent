@@ -15,11 +15,11 @@ interface Props {
 export default function OrderCreated({ message, checkout_url, order_ref, expires_at, totals, onProceed }: Props) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-      <div className="glass-panel" style={{ background: "#ffffff", padding: "14px 18px", borderRadius: "16px 16px 16px 4px", color: "#333", fontSize: "0.95rem", lineHeight: 1.5, border: "1px solid var(--glass-border)", maxWidth: "88%" }}>
+      <div className="glass-panel agent-card-glow" style={{ background: "#ffffff", padding: "14px 18px", borderRadius: "16px 16px 16px 4px", color: "#333", fontSize: "0.95rem", lineHeight: 1.5, border: "1px solid var(--glass-border)", maxWidth: "88%" }}>
         {message}
       </div>
 
-      <div className="animate-fade-in" style={{ background: "#3b2667", borderRadius: "16px", padding: "20px", maxWidth: "420px", boxShadow: "0 8px 32px rgba(0,0,0,0.2)" }}>
+      <div className="animate-fade-in agent-card-glow" style={{ background: "#3b2667", borderRadius: "16px", padding: "20px", maxWidth: "420px", boxShadow: "0 8px 32px rgba(0,0,0,0.2)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "20px" }}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#facc15" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
           <span style={{ fontWeight: 700, fontSize: "1.1rem", color: "#fff" }}>Order Confirmed!</span>

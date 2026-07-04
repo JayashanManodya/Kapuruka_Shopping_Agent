@@ -125,12 +125,12 @@ export default function ListCategories({ message, onSelect }: Props) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "12px", width: "100%", maxWidth: "560px" }}>
       {message && (
-        <div className="glass-panel" style={{ background: "#ffffff", padding: "14px 18px", borderRadius: "16px 16px 16px 4px", color: "#333", fontSize: "0.95rem", lineHeight: 1.5, border: "1px solid var(--glass-border)", maxWidth: "88%" }}>
+        <div className="glass-panel agent-card-glow" style={{ background: "#ffffff", padding: "14px 18px", borderRadius: "16px 16px 16px 4px", color: "#333", fontSize: "0.95rem", lineHeight: 1.5, border: "1px solid var(--glass-border)", maxWidth: "88%" }}>
           {message}
         </div>
       )}
 
-      <div className="animate-fade-in" style={{ 
+      <div className="animate-fade-in agent-card-glow" style={{ 
         background: "var(--brand-purple, #392061)", 
         borderRadius: "20px", 
         border: "1px solid rgba(255, 255, 255, 0.1)", 

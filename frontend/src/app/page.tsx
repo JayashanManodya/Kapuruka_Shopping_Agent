@@ -654,7 +654,7 @@ export default function Home() {
       default:
         return (
           <div
-            className="glass-panel"
+            className="glass-panel agent-card-glow"
             style={{
               background: "#ffffff",
               padding: "14px 18px",
@@ -989,7 +989,7 @@ export default function Home() {
                   {isLoading && (
                     <div style={{ alignSelf: "flex-start", display: "flex", flexDirection: "column", gap: "4px" }}>
                       <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginLeft: "4px" }}>KIKO</span>
-                      <div className="glass-panel" style={{ padding: "14px 20px", borderRadius: "16px 16px 16px 4px", display: "flex", gap: "6px", alignItems: "center" }}>
+                      <div className="glass-panel agent-card-glow" style={{ padding: "14px 20px", borderRadius: "16px 16px 16px 4px", display: "flex", gap: "6px", alignItems: "center" }}>
                         <div className="typing-dot"></div>
                         <div className="typing-dot"></div>
                         <div className="typing-dot"></div>
