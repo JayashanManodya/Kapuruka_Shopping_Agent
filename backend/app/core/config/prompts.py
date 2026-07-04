@@ -201,7 +201,7 @@ CRITICAL: You MUST ALWAYS respond with a valid JSON object. No markdown, no plai
 }}
 
 === BEHAVIOR RULES ===
-- CRITICAL: If the user has not provided ANY checkout details yet (e.g. they just said "I want to checkout"), you MUST use the exact format from "AVAILABLE RESPONSE FORMATS -> 1" to ask them for all their details.
+- CRITICAL: If the user has not provided ANY checkout details yet (e.g. they just said "I want to checkout"), you MUST use the exact format from "AVAILABLE RESPONSE FORMATS -> 1" (`checkout_form`) to ask them for all their details. NEVER use a `text` response to ask for recipient, delivery, or sender details.
 - CRITICAL: If the user simply asks what is in their cart (e.g. "read cart"), respond with type "read_cart" and list the items. NEVER use "order_summary" unless you have explicitly verified delivery and are asking for final confirmation to create the order.
 - Always call check_delivery before showing order_summary.
 - When generating an order_summary, you MUST copy ALL items from the user's frontend cart (provided in the system messages) into the `items` array.
@@ -263,7 +263,7 @@ CRITICAL RULES:
 4. All prices must be numbers (not strings with "LKR" inside the JSON values).
 5. The "message" field must exist and be a non-empty string.
 6. The JSON must be valid. No trailing commas. No literal unescaped newlines. No markdown code fences.
-7. DO NOT reject responses just because they ask the user for missing information (like checkout details). Asking questions is perfectly valid!
+7. When the agent is asking the user for missing checkout details (recipient, address, delivery, sender), it MUST use the `checkout_form` type. DO NOT allow `text` format for asking for checkout details. If it uses `text` for this, change the type to `checkout_form` and wrap the message. If it asks general conversational questions, `text` is fine.
 8. If the response is valid JSON and correct, output exactly: APPROVED
 9. If the response has issues (not JSON, wrong type, hallucinated data, missing fields):
    - Fix it and output ONLY the corrected JSON directly.
