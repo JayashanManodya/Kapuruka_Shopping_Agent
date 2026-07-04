@@ -950,7 +950,7 @@ export default function Home() {
 
                     return (
                       <div key={index} className="animate-fade-in" style={{ alignSelf: "flex-start", maxWidth: "100%", display: "flex", flexDirection: "row", alignItems: "flex-end", gap: "10px", width: "100%" }}>
-                        <img src="/agent_photo.png" alt="Kapruka Agent" style={{ width: 36, height: 36, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }} />
+                        <img src="/chatbot-logo.png" alt="KIKO" style={{ width: 36, height: 36, objectFit: "contain", flexShrink: 0 }} />
                         <div style={{ display: "flex", flexDirection: "column", gap: "8px", flex: 1, minWidth: 0 }}>
                           {renderStructuredResponse(sr, index)}
                         </div>
@@ -961,7 +961,7 @@ export default function Home() {
                   {/* Typing indicator */}
                   {isLoading && (
                     <div style={{ alignSelf: "flex-start", display: "flex", flexDirection: "column", gap: "4px" }}>
-                      <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginLeft: "4px" }}>KAPRUKA AGENT</span>
+                      <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginLeft: "4px" }}>KIKO</span>
                       <div className="glass-panel" style={{ padding: "14px 20px", borderRadius: "16px 16px 16px 4px", display: "flex", gap: "6px", alignItems: "center" }}>
                         <div className="typing-dot"></div>
                         <div className="typing-dot"></div>
