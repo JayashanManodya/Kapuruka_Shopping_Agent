@@ -120,6 +120,13 @@ class CartUpdateResponse(BaseModel):
     product_name: Optional[str] = None
 
 
+class ReadCartResponse(BaseModel):
+    type: Literal["read_cart"]
+    message: str
+    items: list[OrderItem] = []
+    total: float = 0
+
+
 class OrderSummaryResponse(BaseModel):
     type: Literal["order_summary"]
     message: str
@@ -170,6 +177,7 @@ AgentResponse = Annotated[
         OrderSummaryResponse,
         OrderCreatedResponse,
         TrackOrderResponse,
+        ReadCartResponse,
         TextResponse,
     ],
     Field(discriminator="type"),

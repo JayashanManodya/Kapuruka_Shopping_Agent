@@ -10,6 +10,7 @@ import OrderCreated from "./components/responses/OrderCreated";
 import TrackOrder from "./components/responses/TrackOrder";
 import ListCategories from "./components/responses/ListCategories";
 import CartUpdate from "./components/responses/CartUpdate";
+import ReadCart from "./components/responses/ReadCart";
 
 // ─────────────────────────────────────────
 // Types
@@ -34,6 +35,7 @@ type AgentResponse =
   | { type: "order_summary"; message: string; recipient: any; delivery: any; sender: string; items: any[]; delivery_fee: number; grand_total: number }
   | { type: "order_created"; message: string; checkout_url: string; order_ref: string; expires_at: string; totals: any }
   | { type: "track_order"; message: string; order_ref: string; status: string; timeline: any[]; recipient: any; delivery: any; payment: any; items: any[] }
+  | { type: "read_cart"; message: string; items: any[]; total: number }
   | { type: "text"; message: string };
 
 interface ChatThread {
@@ -560,6 +562,16 @@ export default function Home() {
             message={sr.message}
             action={sr.action}
             product_name={sr.product_name}
+            onViewCart={() => setIsCartOpen(true)}
+          />
+        );
+
+      case "read_cart":
+        return (
+          <ReadCart
+            message={sr.message}
+            items={sr.items}
+            total={sr.total}
             onViewCart={() => setIsCartOpen(true)}
           />
         );
