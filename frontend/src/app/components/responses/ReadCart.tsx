@@ -4,6 +4,7 @@ import React from "react";
 import { ShoppingCart } from "lucide-react";
 
 interface OrderItem {
+  product_id?: string;
   product_name?: string;
   name?: string;
   quantity: number;
@@ -43,7 +44,12 @@ export default function ReadCart({ message, items, total, onViewCart }: Props) {
           <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginBottom: "8px" }}>
             {items.map((item, i) => (
               <div key={i} style={{ display: "flex", justifyContent: "space-between", color: "#444", fontSize: "0.9rem" }}>
-                <span>{item.name || item.product_name} x{item.quantity}</span>
+                <div style={{ display: "flex", flexDirection: "column" }}>
+                  <span>{item.name || item.product_name} x{item.quantity}</span>
+                  {(item.product_id) && (
+                    <span style={{ fontSize: "0.75rem", color: "#888", fontFamily: "monospace" }}>{item.product_id}</span>
+                  )}
+                </div>
                 <span style={{ fontWeight: 600 }}>LKR {((item.price || 0) * (item.quantity || 1)).toLocaleString()}</span>
               </div>
             ))}
