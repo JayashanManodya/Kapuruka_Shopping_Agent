@@ -216,6 +216,16 @@ html, body {
 .menu-dropdown-btn:hover { background: rgba(255,255,255,0.1) !important; }
 
 /* Responsive Layout Classes */
+.top-header {
+  width: 100%;
+  padding: 24px 48px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: transparent;
+  z-index: 100;
+}
+
 .header-container {
   display: flex;
   justify-content: space-between;
@@ -356,6 +366,10 @@ html, body {
     padding: 8px 16px;
   }
   
+  .top-header {
+    padding: 16px 20px;
+  }
+  
   .main-container {
     padding: 12px;
     gap: 0;
@@ -398,5 +412,9 @@ html, body {
   /* Make user profile name hidden on small screens */
   .user-name-text {
     display: none;
+  }
+
+  .hide-on-mobile {
+    display: none !important;
   }
 }

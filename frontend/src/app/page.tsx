@@ -73,7 +73,7 @@ const parseStructuredResponse = (raw: string | null | undefined): AgentResponse 
     if (obj && typeof obj.type === "string" && typeof obj.message === "string") {
       return obj as AgentResponse;
     }
-  } catch (_) {}
+  } catch (_) { }
   return null;
 };
 
@@ -194,6 +194,8 @@ export default function Home() {
   const [showPostPaymentDialog, setShowPostPaymentDialog] = useState(false);
   const [currentOrderRef, setCurrentOrderRef] = useState<string | null>(null);
   const [loadingMoreIds, setLoadingMoreIds] = useState<Record<number, boolean>>({});
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [language, setLanguage] = useState("English");
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [isListening, setIsListening] = useState(false);
@@ -207,9 +209,9 @@ export default function Home() {
   // Load state from localStorage on mount
   useEffect(() => {
     const savedCart = localStorage.getItem("kapruka_cart");
-    if (savedCart) { try { setCartItems(JSON.parse(savedCart)); } catch (e) {} }
+    if (savedCart) { try { setCartItems(JSON.parse(savedCart)); } catch (e) { } }
     const savedMessages = localStorage.getItem("kapruka_messages_v3");
-    if (savedMessages) { try { setMessages(JSON.parse(savedMessages)); } catch (e) {} }
+    if (savedMessages) { try { setMessages(JSON.parse(savedMessages)); } catch (e) { } }
   }, []);
 
   useEffect(() => { localStorage.setItem("kapruka_cart", JSON.stringify(cartItems)); }, [cartItems]);
@@ -290,11 +292,11 @@ export default function Home() {
       product_id: item.id,
       product_name: item.name
     };
-    
-    const syntheticMsg: Message = { 
-      role: "assistant", 
-      content: JSON.stringify(structured), 
-      structured_response: structured 
+
+    const syntheticMsg: Message = {
+      role: "assistant",
+      content: JSON.stringify(structured),
+      structured_response: structured
     };
     setMessages(prev => [...prev, syntheticMsg]);
   };
@@ -359,7 +361,7 @@ export default function Home() {
           const savedOrders = JSON.parse(localStorage.getItem("kapruka_orders") || "[]");
           savedOrders.unshift({ id: Date.now(), order_number: data.order_ref, product_name: cartItems.map(c => c.product_name || c.name).join(", "), created_at: new Date().toISOString() });
           localStorage.setItem("kapruka_orders", JSON.stringify(savedOrders));
-        } catch (e) {}
+        } catch (e) { }
       }
     } catch (e) {
       alert("Network error. Please try again.");
@@ -632,12 +634,23 @@ export default function Home() {
       <div className="blob-3"></div>
 
       {/* Top Branded Header */}
-      <header style={{ width: "100%", padding: "24px 48px", display: "flex", alignItems: "center", justifyContent: "space-between", background: "transparent", zIndex: 100 }}>
-        <img
-          src="/kapruka-logo.webp"
-          alt="Kapruka"
-          style={{ height: "auto", width: "160px" }}
-        />
+      <header className="top-header">
+        <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+          <img
+            src="/kapruka-logo.webp"
+            alt="Kapruka"
+            style={{ height: "auto", width: "140px", marginRight: "-12px" }}
+          />
+          <div style={{ height: "28px", width: "2px", background: "rgba(83, 34, 184, 0.2)", borderRadius: "2px" }}></div>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <img
+              src="/chatbot-logo.png"
+              alt="KIKO"
+              style={{ width: "36px", height: "36px", marginTop: "-6px" }}
+            />
+            <span className="hide-on-mobile" style={{ fontSize: "1.3rem", fontWeight: 800, color: "#2D2375", letterSpacing: "0.5px" }}>KIKO</span>
+          </div>
+        </div>
         <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
           <button
             onClick={resetChat}
@@ -658,12 +671,59 @@ export default function Home() {
             )}
             <ShoppingCart size={24} strokeWidth={1.5} />
           </button>
-          <button
-            style={{ background: "#5322B8", border: "none", borderRadius: "50%", padding: "8px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", width: "48px", height: "48px", color: "#fff", boxShadow: "0 4px 6px rgba(0,0,0,0.1)" }}
-            aria-label="Settings"
-          >
-            <Settings size={24} strokeWidth={1.5} />
-          </button>
+          <div style={{ position: "relative" }}>
+            <button
+              onClick={() => setIsSettingsOpen(!isSettingsOpen)}
+              style={{ background: "#5322B8", border: "none", borderRadius: "50%", padding: "8px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", width: "48px", height: "48px", color: "#fff", boxShadow: "0 4px 6px rgba(0,0,0,0.1)" }}
+              aria-label="Settings"
+            >
+              <Settings size={24} strokeWidth={1.5} />
+            </button>
+            {isSettingsOpen && (
+              <>
+                <div 
+                  onClick={() => setIsSettingsOpen(false)} 
+                  style={{ position: "fixed", inset: 0, zIndex: 200 }} 
+                />
+                <div style={{ 
+                  position: "absolute", top: "100%", right: 0, marginTop: "12px", 
+                  width: "280px", background: "#ffffff", borderRadius: "16px", 
+                  boxShadow: "0 10px 25px rgba(0,0,0,0.1)", zIndex: 201, padding: "16px",
+                  border: "1px solid #e2e8f0" 
+                }}>
+                  <h3 style={{ margin: "0 0 12px 0", fontSize: "1rem", color: "#0f172a", fontWeight: 700 }}>Settings</h3>
+                  
+                  <div style={{ marginBottom: "20px" }}>
+                    <label style={{ display: "block", fontSize: "0.85rem", color: "#64748b", marginBottom: "8px", fontWeight: 600 }}>Language</label>
+                    <div style={{ display: "flex", gap: "8px" }}>
+                      {["English", "Sinhala", "Tamil"].map(lang => (
+                        <button 
+                          key={lang}
+                          onClick={() => { setLanguage(lang); setIsSettingsOpen(false); }}
+                          style={{ 
+                            flex: 1, padding: "6px", borderRadius: "8px", border: "1px solid",
+                            background: language === lang ? "#f3e8ff" : "#ffffff",
+                            borderColor: language === lang ? "#9333ea" : "#e2e8f0",
+                            color: language === lang ? "#7e22ce" : "#475569",
+                            fontSize: "0.85rem", fontWeight: 600, cursor: "pointer", transition: "all 0.2s"
+                          }}
+                        >
+                          {lang}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label style={{ display: "block", fontSize: "0.85rem", color: "#64748b", marginBottom: "8px", fontWeight: 600 }}>About KIKO</label>
+                    <div style={{ background: "#f8fafc", padding: "12px", borderRadius: "8px", fontSize: "0.85rem", color: "#475569", lineHeight: 1.5 }}>
+                      KIKO is your AI-powered Kapruka shopping assistant. It helps you discover products, track orders, and complete checkouts effortlessly.
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </header>
 
@@ -677,60 +737,80 @@ export default function Home() {
           style={{ zIndex: 199, display: isCartOpen ? "block" : "none" }}
         />
         <div
-          className="glass-card"
           style={{
-            position: "fixed", top: 0, right: 0, bottom: 0, width: "350px", maxWidth: "90vw", zIndex: 200,
+            position: "fixed", top: 0, right: 0, bottom: 0, width: "400px", maxWidth: "90vw", zIndex: 200,
             transform: isCartOpen ? "translateX(0)" : "translateX(100%)",
             transition: "transform 0.3s ease",
             display: "flex", flexDirection: "column",
-            borderLeft: "1px solid rgba(255,255,255,0.1)",
-            borderRadius: "0", background: "rgba(34, 19, 69, 0.95)"
+            background: "#ffffff",
+            boxShadow: "-4px 0 15px rgba(0,0,0,0.05)"
           }}
         >
-          <div style={{ padding: "20px", borderBottom: "1px solid rgba(255,255,255,0.1)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <h2 style={{ color: "#fff", fontSize: "1.2rem", margin: 0 }}>Your Cart</h2>
-            <button onClick={() => setIsCartOpen(false)} style={{ background: "transparent", border: "none", color: "#fff", cursor: "pointer", fontSize: "1.5rem" }}>×</button>
+          {/* Header */}
+          <div style={{ padding: "24px", borderBottom: "1px solid #f1f5f9", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <h2 style={{ color: "#0f172a", fontSize: "1.5rem", fontWeight: 700, margin: 0 }}>Cart</h2>
+            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+              <div style={{ border: "1px solid #e2e8f0", borderRadius: "100px", padding: "4px 12px", fontSize: "0.85rem", color: "#475569", fontWeight: 500 }}>
+                {cartItems.reduce((acc, item) => acc + item.quantity, 0)} Items
+              </div>
+              <button onClick={() => setIsCartOpen(false)} style={{ background: "transparent", border: "none", color: "#94a3b8", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><line x1="15" y1="3" x2="15" y2="21" /><path d="M8 8l4 4-4 4" /></svg>
+              </button>
+            </div>
           </div>
-          <div style={{ flex: 1, overflowY: "auto", padding: "20px", display: "flex", flexDirection: "column", gap: "16px" }}>
+
+          {/* Cart Items */}
+          <div style={{ flex: 1, overflowY: "auto", padding: "24px", display: "flex", flexDirection: "column", gap: "16px", background: "#ffffff" }}>
             {isCartLoading ? (
-              <div style={{ color: "var(--text-muted)", textAlign: "center" }}>Loading cart...</div>
+              <div style={{ color: "#64748b", textAlign: "center" }}>Loading cart...</div>
             ) : cartItems.length === 0 ? (
-              <div style={{ color: "var(--text-muted)", textAlign: "center" }}>Your cart is empty.</div>
+              <div style={{ color: "#64748b", textAlign: "center" }}>Your cart is empty.</div>
             ) : (
               cartItems.map(item => (
-                <div key={item.product_id} style={{ display: "flex", gap: "12px", background: "rgba(255,255,255,0.05)", padding: "12px", borderRadius: "12px", alignItems: "center" }}>
-                  {(item.image_url || item.image) ? <img src={item.image_url || item.image} alt={item.product_name} style={{ width: 60, height: 60, objectFit: "contain", background: "#fff", borderRadius: "8px" }} /> : <div style={{ width: 60, height: 60, background: "rgba(255,255,255,0.1)", borderRadius: "8px" }} />}
-                  <div style={{ flex: 1 }}>
-                    <div style={{ color: "#fff", fontSize: "0.9rem", fontWeight: "bold", marginBottom: "6px" }}>{item.product_name}</div>
-                    <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                      <div style={{ display: "flex", alignItems: "center", background: "rgba(255,255,255,0.1)", borderRadius: "6px" }}>
-                        <button onClick={() => updateCartQuantity(item.product_id, item.quantity - 1)} style={{ background: "transparent", color: "#fff", border: "none", padding: "2px 8px", cursor: "pointer", fontSize: "1rem" }}>-</button>
-                        <span style={{ color: "#fff", fontSize: "0.85rem", minWidth: "20px", textAlign: "center", fontWeight: "bold" }}>{item.quantity}</span>
-                        <button onClick={() => updateCartQuantity(item.product_id, item.quantity + 1)} style={{ background: "transparent", color: "#fff", border: "none", padding: "2px 8px", cursor: "pointer", fontSize: "1rem" }}>+</button>
+                <div key={item.product_id} style={{ display: "flex", gap: "16px", border: "1px solid #e2e8f0", padding: "16px", borderRadius: "16px", alignItems: "flex-start" }}>
+                  {(item.image_url || item.image) ? <img src={item.image_url || item.image} alt={item.product_name} style={{ width: 80, height: 80, objectFit: "cover", borderRadius: "12px" }} /> : <div style={{ width: 80, height: 80, background: "#f1f5f9", borderRadius: "12px" }} />}
+                  <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "8px" }}>
+                    <div style={{ color: "#312e81", fontSize: "1rem", fontWeight: 500, lineHeight: 1.3 }}>{item.product_name}</div>
+                    <div style={{ color: "#0f172a", fontSize: "1rem", fontWeight: 700 }}>
+                      {item.price ? `LKR ${(item.price * item.quantity).toLocaleString()}` : "N/A"}
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: "4px" }}>
+                      <div style={{ display: "flex", alignItems: "center", background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "100px", padding: "4px 8px" }}>
+                        <button onClick={() => updateCartQuantity(item.product_id, item.quantity - 1)} style={{ background: "transparent", color: "#64748b", border: "none", width: "24px", height: "24px", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: "1.1rem" }}>-</button>
+                        <span style={{ color: "#0f172a", fontSize: "0.95rem", minWidth: "28px", textAlign: "center", fontWeight: 600 }}>{item.quantity}</span>
+                        <button onClick={() => updateCartQuantity(item.product_id, item.quantity + 1)} style={{ background: "transparent", color: "#64748b", border: "none", width: "24px", height: "24px", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: "1.1rem" }}>+</button>
                       </div>
-                      <div style={{ color: "var(--brand-yellow)", fontSize: "0.9rem", fontWeight: "bold" }}>
-                        {item.price ? `${(item.price * item.quantity).toLocaleString()} LKR` : "N/A"}
-                      </div>
+                      <button onClick={() => removeFromCart(item.product_id)} style={{ background: "transparent", color: "#94a3b8", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }} title="Remove item">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                      </button>
                     </div>
                   </div>
-                  <button onClick={() => removeFromCart(item.product_id)} style={{ background: "rgba(239, 68, 68, 0.2)", color: "#ef4444", border: "none", borderRadius: "50%", width: 30, height: 30, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }} title="Remove item">🗑</button>
                 </div>
               ))
             )}
           </div>
-          <div style={{ padding: "20px", borderTop: "1px solid rgba(255,255,255,0.1)" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", color: "#fff", fontSize: "1.1rem", fontWeight: "bold", marginBottom: "16px" }}>
-              <span>Total:</span>
-              <span style={{ color: "var(--brand-yellow)" }}>{cartItems.reduce((acc, item) => acc + ((item.price || 0) * item.quantity), 0).toLocaleString()} LKR</span>
+
+          {/* Footer */}
+          <div style={{ padding: "24px", borderTop: "1px solid #e2e8f0", background: "#f8fafc" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+              <span style={{ color: "#64748b", fontSize: "1.1rem" }}>Total</span>
+              <span style={{ color: "#0f172a", fontSize: "1.3rem", fontWeight: 700 }}>LKR {cartItems.reduce((acc, item) => acc + ((item.price || 0) * item.quantity), 0).toLocaleString()}</span>
             </div>
             <button
               onClick={handleCartCheckout}
               disabled={cartItems.length === 0}
-              className="glow-button"
-              style={{ width: "100%", background: "var(--brand-yellow)", color: "var(--brand-purple-dark)", border: "none", padding: "14px", borderRadius: "8px", fontWeight: 700, fontSize: "1rem", cursor: cartItems.length === 0 ? "not-allowed" : "pointer", opacity: cartItems.length === 0 ? 0.5 : 1 }}
+              style={{ width: "100%", background: "#3b2073", color: "#ffffff", border: "none", padding: "16px", borderRadius: "12px", fontWeight: 600, fontSize: "1.1rem", cursor: cartItems.length === 0 ? "not-allowed" : "pointer", opacity: cartItems.length === 0 ? 0.5 : 1, transition: "background 0.2s" }}
             >
-              Checkout Now
+              Checkout
             </button>
+            <div style={{ textAlign: "center", marginTop: "16px" }}>
+              <button 
+                onClick={() => setCartItems([])} 
+                style={{ background: "transparent", border: "none", color: "#64748b", fontSize: "0.95rem", cursor: "pointer", textDecoration: "none" }}
+              >
+                Clear cart
+              </button>
+            </div>
           </div>
         </div>
 
@@ -739,7 +819,7 @@ export default function Home() {
 
           {messages.length === 0 ? (
             // ── KIKO UI Empty State ──
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", padding: "20px", position: "relative" }}>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", padding: "20px", paddingBottom: "15vh", position: "relative" }}>
               <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: "24px" }}>
                 <div className="float-rotate-animation">
                   <img
@@ -792,7 +872,7 @@ export default function Home() {
 
               {/* Footer */}
               <div style={{ position: "absolute", bottom: "32px", left: 0, right: 0, textAlign: "center", fontSize: "0.8rem", color: "#6b7280" }}>
-                Powered by <span style={{ color: "#5322B8", fontWeight: "bold" }}>Kapruka MCP</span> • Build by <a href="https://www.jayashan.online/" target="_blank" rel="noopener noreferrer" style={{ color: "#5322B8", fontWeight: "bold", textDecoration: "none" }}>Jayashan Manodya</a>
+                Built by <a href="https://www.jayashan.online/" target="_blank" rel="noopener noreferrer" style={{ color: "#5322B8", fontWeight: "bold", textDecoration: "none" }}>Jayashan Manodya</a> • Powered by <span style={{ color: "#5322B8", fontWeight: "bold" }}>Kapruka MCP</span>
               </div>
             </div>
           ) : (
@@ -877,28 +957,28 @@ export default function Home() {
               </div>
 
               {/* Input Bar (Floating) */}
-              <div style={{ 
-                position: "absolute", 
-                bottom: 0, 
-                left: 0, 
-                right: 0, 
-                padding: "20px 24px", 
-                display: "flex", 
+              <div style={{
+                position: "absolute",
+                bottom: 0,
+                left: 0,
+                right: 0,
+                padding: "20px 24px",
+                display: "flex",
                 justifyContent: "center",
                 background: "transparent",
                 pointerEvents: "none",
                 zIndex: 10
               }}>
-                <div style={{ 
-                  display: "flex", 
-                  gap: "12px", 
-                  position: "relative", 
-                  alignItems: "center", 
-                  background: "#fff", 
-                  padding: "8px 16px", 
-                  borderRadius: "30px", 
-                  width: "100%", 
-                  maxWidth: "800px", 
+                <div style={{
+                  display: "flex",
+                  gap: "12px",
+                  position: "relative",
+                  alignItems: "center",
+                  background: "#fff",
+                  padding: "8px 16px",
+                  borderRadius: "30px",
+                  width: "100%",
+                  maxWidth: "800px",
                   border: "1px solid #d1d5db",
                   pointerEvents: "auto"
                 }}>
