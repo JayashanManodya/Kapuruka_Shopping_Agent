@@ -13,7 +13,7 @@ app = FastAPI(title="Kapruka Shopping Agent API (Stateless)")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000", "https://kapuruka-shopping-agent.vercel.app" , "https://kiko-kapuruka.vercel.app/"],
+    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000", "https://kiko-kapuruka.vercel.app", "https://kapuruka-shopping-agent.vercel.app"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
