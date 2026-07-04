@@ -59,7 +59,6 @@ class CheckoutRequest(BaseModel):
 def detect_language_from_text(text: str) -> str | None:
     if not text:
         return None
-    text_lower = text.lower()
     
     # 1. Sinhala Unicode Check (range 0D80 to 0DFF)
     if any(0x0D80 <= ord(char) <= 0x0DFF for char in text):
@@ -69,8 +68,12 @@ def detect_language_from_text(text: str) -> str | None:
     if any(0x0B80 <= ord(char) <= 0x0BFF for char in text):
         return "Tamil (Unicode)"
         
+    import re
+    # Tokenize the lowercase text into whole words
+    words = set(re.findall(r'\b\w+\b', text.lower()))
+    
     # 3. Singlish Keywords Check (highly specific Romanized Sinhala words, no English overlap)
-    singlish_keywords = [
+    singlish_keywords = {
         "machan", "machang", "malli", "nangi", "aiya", "akka", "kohmada", "kohomada", 
         "hari", "neda", "ne", "puluwanda", "puluwan", "ganna", "epa", "oneda", "onai", 
         "onay", "mokada", "oyata", "mata", "karanna", "sthuthi", "stuti", "ayubowan", 
@@ -80,28 +83,28 @@ def detect_language_from_text(text: str) -> str | None:
         "kiyada", "keeyada", "keeyak", "kiyala", "kiyanna", "koheda", "monawada", 
         "mokakda", "kauda", "kawda", "ehema", "mehema", "ehenam", "yawanna", "genna", 
         "aranna", "karala", "kala", "kara", "kalaa"
-    ]
-    if any(word in text_lower for word in singlish_keywords):
+    }
+    if any(word in words for word in singlish_keywords):
         return "Singlish"
         
     # 4. Tanglish Keywords Check (highly specific Romanized Tamil words, no English overlap)
-    tanglish_keywords = [
+    tanglish_keywords = {
         "epdi", "irukinga", "vanakkam", "vendum", "nandri", "panna", "mudiyum", "unga", 
         "enakku", "enaku", "ungaluku", "romba", "nalla", "veetuku", "kodu", "pannu", 
         "seyya", "kelunga", "kamunga", "panniyachu", "irukku", "illai", "irukkada", 
         "illada", "sari", "ama", "thambi", "anna", "akka", "mama", "kudunga", "kaatunga", 
         "pannunga", "seinga", "panunga", "vendaam"
-    ]
-    if any(word in text_lower for word in tanglish_keywords):
+    }
+    if any(word in words for word in tanglish_keywords):
         return "Tanglish"
         
     # 5. English Keywords Check
-    english_keywords = [
+    english_keywords = {
         "show", "me", "find", "search", "get", "retrieve", "list", 
         "cart", "basket", "checkout", "order", "delivery", "track", 
         "please", "help", "hello", "hi", "what", "where", "how", "can"
-    ]
-    if any(word in text_lower for word in english_keywords):
+    }
+    if any(word in words for word in english_keywords):
         return "English"
         
     return None

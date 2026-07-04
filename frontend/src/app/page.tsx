@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { RotateCcw, ShoppingCart, Settings, Mic, Paperclip } from "lucide-react";
+import { RotateCcw, ShoppingCart, Settings, Mic, Paperclip, Send } from "lucide-react";
 import UserProfile from "./components/UserProfile";
 import RecommendedItems from "./components/responses/RecommendedItems";
 import ProductDetail from "./components/responses/ProductDetail";
@@ -244,7 +244,7 @@ const LOCALIZATION: Record<string, {
       { original: "Groceries", label: "Groceries" },
       { original: "Check Delivery", label: "Delivery Check" }
     ],
-    cartAdded: (name) => `${name} oyage basket ekata add kala! 🛒`,
+    cartAdded: (name) => `${name} oyage cart ekata add kala! 🛒`,
     orderCreated: "Oyage order eka successfully create kala! 🎉",
     paymentSuccessMsg: "Confirm kalata sthuthi! Mama oyage basket eka clear kala. Oyage email ekata apu **Order Number** eka methanata daala order status eka track karanna puluwan.",
     apiErrorMsg: (err) => `Aiyo! ⚠️ Backend server ekata connect wenna bari una. Passe try karanna. (${err})`
@@ -331,7 +331,7 @@ export default function Home() {
       let resolvedLang = savedLanguage;
       if (savedLanguage === "Sinhala") resolvedLang = "Sinhala (Unicode)";
       else if (savedLanguage === "Tamil") resolvedLang = "Tamil (Unicode)";
-      
+
       setLanguage(resolvedLang);
       setSelectedLangTemp(resolvedLang);
     }
@@ -564,13 +564,13 @@ export default function Home() {
           // Look up matching message in the frontend's previous state
           // to carry over frontend-only fields that the backend doesn't track.
           const oldMsg = updatedMessages.find(old => old.role === m.role && old.content === m.content);
-          
+
           const merged = { ...m };
           if (oldMsg) {
-             if (oldMsg.hidden !== undefined) merged.hidden = oldMsg.hidden;
-             if (oldMsg.structured_response !== undefined) merged.structured_response = oldMsg.structured_response;
+            if (oldMsg.hidden !== undefined) merged.hidden = oldMsg.hidden;
+            if (oldMsg.structured_response !== undefined) merged.structured_response = oldMsg.structured_response;
           }
-          
+
           // The backend sends the latest parsed structured_response separately
           if (merged.role === "assistant" && idx === arr.length - 1 && structured) {
             merged.structured_response = structured;
@@ -859,18 +859,18 @@ export default function Home() {
             </button>
             {isSettingsOpen && (
               <>
-                <div 
-                  onClick={() => setIsSettingsOpen(false)} 
-                  style={{ position: "fixed", inset: 0, zIndex: 200 }} 
+                <div
+                  onClick={() => setIsSettingsOpen(false)}
+                  style={{ position: "fixed", inset: 0, zIndex: 200 }}
                 />
-                <div style={{ 
-                  position: "absolute", top: "100%", right: 0, marginTop: "12px", 
-                  width: "280px", background: "#ffffff", borderRadius: "16px", 
+                <div style={{
+                  position: "absolute", top: "100%", right: 0, marginTop: "12px",
+                  width: "280px", background: "#ffffff", borderRadius: "16px",
                   boxShadow: "0 10px 25px rgba(0,0,0,0.1)", zIndex: 201, padding: "16px",
-                  border: "1px solid #e2e8f0" 
+                  border: "1px solid #e2e8f0"
                 }}>
                   <h3 style={{ margin: "0 0 12px 0", fontSize: "1rem", color: "#0f172a", fontWeight: 700 }}>Settings</h3>
-                  
+
                   <div style={{ marginBottom: "20px" }}>
                     <label style={{ display: "block", fontSize: "0.85rem", color: "#64748b", marginBottom: "8px", fontWeight: 600 }}>Language</label>
                     <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
@@ -881,10 +881,10 @@ export default function Home() {
                         { id: "Tamil (Unicode)", label: "தமிழ் (Tamil Unicode)" },
                         { id: "Tanglish", label: "Tanglish (Romanized Tamil)" }
                       ].map(lang => (
-                        <button 
+                        <button
                           key={lang.id}
                           onClick={() => { setLanguage(lang.id); setIsSettingsOpen(false); }}
-                          style={{ 
+                          style={{
                             width: "100%", padding: "8px 12px", borderRadius: "8px", border: "1px solid",
                             textAlign: "left",
                             background: language === lang.id ? "#f3e8ff" : "#ffffff",
@@ -991,8 +991,8 @@ export default function Home() {
               Checkout
             </button>
             <div style={{ textAlign: "center", marginTop: "16px" }}>
-              <button 
-                onClick={() => setCartItems([])} 
+              <button
+                onClick={() => setCartItems([])}
                 style={{ background: "transparent", border: "none", color: "#64748b", fontSize: "0.95rem", cursor: "pointer", textDecoration: "none" }}
               >
                 Clear cart
@@ -1035,8 +1035,15 @@ export default function Home() {
                     disabled={isLoading}
                     style={{ flex: 1, background: "transparent", border: "none", color: "#374151", fontSize: "1rem", outline: "none" }}
                   />
-                  <button onClick={toggleListening} style={{ background: "transparent", border: "none", cursor: "pointer", padding: "6px", display: "flex", alignItems: "center", justifyContent: "center", color: "#4b5563" }}>
-                    <Mic size={20} color={isListening ? "#ef4444" : "currentColor"} />
+                  <button 
+                    onClick={() => inputText.trim() ? handleSendMessage(inputText) : toggleListening()} 
+                    style={{ background: "transparent", border: "none", cursor: "pointer", padding: "6px", display: "flex", alignItems: "center", justifyContent: "center", color: "#4b5563" }}
+                  >
+                    {inputText.trim() ? (
+                      <Send size={20} />
+                    ) : (
+                      <Mic size={20} color={isListening ? "#ef4444" : "currentColor"} />
+                    )}
                   </button>
                   <button style={{ background: "transparent", border: "none", cursor: "pointer", padding: "6px", display: "flex", alignItems: "center", justifyContent: "center", color: "#4b5563" }}>
                     <Paperclip size={20} />
@@ -1175,16 +1182,19 @@ export default function Home() {
                     style={{ flex: 1, background: "transparent", border: "none", color: "#333", fontSize: "1rem", outline: "none", height: "40px" }}
                   />
                   <button
-                    onClick={toggleListening}
+                    onClick={() => inputText.trim() ? handleSendMessage(inputText) : toggleListening()}
                     disabled={isLoading}
                     className={`glow-button ${isListening ? "listening" : ""}`}
                     style={{ background: isListening ? "#ef4444" : "var(--brand-purple-dark)", color: "#fff", border: "none", borderRadius: "50%", width: "44px", height: "44px", padding: 0, cursor: isLoading ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "background 0.2s" }}
                     id="send-msg-btn"
                   >
-                    {isListening
-                      ? <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16" /><rect x="14" y="4" width="4" height="16" /></svg>
-                      : <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" /></svg>
-                    }
+                    {isListening ? (
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16" /><rect x="14" y="4" width="4" height="16" /></svg>
+                    ) : inputText.trim() ? (
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" /></svg>
+                    ) : (
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/></svg>
+                    )}
                   </button>
                 </div>
               </div>
@@ -1210,21 +1220,21 @@ export default function Home() {
       {showLanguageModal && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(15, 23, 42, 0.45)", backdropFilter: "blur(4px)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: "20px" }}>
           <div style={{ background: "#ffffff", borderRadius: "24px", padding: "32px", width: "100%", maxWidth: "480px", boxShadow: "0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04)", position: "relative" }}>
-            
+
             {/* Header section */}
             <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "6px", color: "#6b21a8", fontSize: "0.8rem", fontWeight: 700, letterSpacing: "0.05em", textTransform: "uppercase", marginBottom: "8px" }}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20" /><path d="M2 12h20" /></svg>
               LANGUAGE
             </div>
-            
+
             <h2 style={{ fontSize: "1.8rem", fontWeight: 800, color: "#0f172a", margin: "0 0 12px 0", textAlign: "center" }}>
               <span style={{ backgroundColor: "#fef08a", padding: "2px 10px", borderRadius: "6px" }}>Choose your language</span>
             </h2>
-            
+
             <p style={{ color: "#475569", fontSize: "0.95rem", textAlign: "center", lineHeight: 1.5, margin: "0 0 24px 0", padding: "0 10px" }}>
               Pick how you want Kapruka Agent and the app to speak with you. You can change this anytime from Saved info.
             </p>
-            
+
             {/* Stack of options */}
             <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "28px" }}>
               {[
@@ -1262,7 +1272,7 @@ export default function Home() {
                 );
               })}
             </div>
-            
+
             {/* Action button */}
             <button
               onClick={() => {
@@ -1287,7 +1297,7 @@ export default function Home() {
             >
               Continue
             </button>
-            
+
           </div>
         </div>
       )}
@@ -1296,21 +1306,21 @@ export default function Home() {
       {showFeaturesModal && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(15, 23, 42, 0.45)", backdropFilter: "blur(4px)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: "20px" }}>
           <div style={{ background: "#ffffff", borderRadius: "24px", padding: "32px", width: "100%", maxWidth: "480px", boxShadow: "0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04)", position: "relative" }}>
-            
+
             {/* Header section */}
             <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "6px", color: "#6b21a8", fontSize: "0.8rem", fontWeight: 700, letterSpacing: "0.05em", textTransform: "uppercase", marginBottom: "8px" }}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" /></svg>
               FEATURES
             </div>
-            
+
             <h2 style={{ fontSize: "1.8rem", fontWeight: 800, color: "#0f172a", margin: "0 0 12px 0", textAlign: "center" }}>
               <span style={{ backgroundColor: "#fef08a", padding: "2px 10px", borderRadius: "6px" }}>Meet KIKO!</span>
             </h2>
-            
+
             <p style={{ color: "#475569", fontSize: "0.95rem", textAlign: "center", lineHeight: 1.5, margin: "0 0 24px 0" }}>
               Your personal AI shopping assistant for Kapruka. Here is what I can help you do:
             </p>
-            
+
             {/* List of features */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "24px" }}>
               {[
@@ -1321,13 +1331,13 @@ export default function Home() {
                 { icon: "📦", title: "Order Tracking", desc: "Track shipment in real-time." },
                 { icon: "🎙️", title: "Talk Live with Agent", desc: "Tap mic and speak — Agent replies out loud." }
               ].map((f, idx) => (
-                <div key={idx} style={{ 
-                  display: "flex", 
-                  gap: "10px", 
-                  alignItems: "flex-start", 
-                  padding: "10px 12px", 
-                  borderRadius: "12px", 
-                  border: "1px solid #f1f5f9", 
+                <div key={idx} style={{
+                  display: "flex",
+                  gap: "10px",
+                  alignItems: "flex-start",
+                  padding: "10px 12px",
+                  borderRadius: "12px",
+                  border: "1px solid #f1f5f9",
                   background: "#f8fafc",
                   gridColumn: "span 1"
                 }}>
@@ -1339,7 +1349,7 @@ export default function Home() {
                 </div>
               ))}
             </div>
-            
+
             {/* Action button */}
             <button
               onClick={() => setShowFeaturesModal(false)}
@@ -1360,7 +1370,70 @@ export default function Home() {
             >
               Let's Shop!
             </button>
+
+          </div>
+        </div>
+      )}
+
+      {/* Post Payment Dialog */}
+      {showPostPaymentDialog && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(15, 23, 42, 0.45)", backdropFilter: "blur(4px)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: "20px" }}>
+          <div style={{ background: "#ffffff", borderRadius: "24px", padding: "32px", width: "100%", maxWidth: "440px", boxShadow: "0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04)", textAlign: "center" }}>
             
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "6px", color: "#6b21a8", fontSize: "0.8rem", fontWeight: 700, letterSpacing: "0.05em", textTransform: "uppercase", marginBottom: "12px" }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><line x1="12" y1="16" x2="12" y2="12" /><line x1="12" y1="8" x2="12.01" y2="8" /></svg>
+              Payment Confirmation
+            </div>
+
+            <h2 style={{ fontSize: "1.6rem", fontWeight: 800, color: "#0f172a", margin: "0 0 12px 0" }}>
+              Did you complete the payment?
+            </h2>
+
+            <p style={{ color: "#475569", fontSize: "0.95rem", lineHeight: 1.5, margin: "0 0 24px 0" }}>
+              Please let us know if your checkout payment was successful so we can clear your basket and update your status.
+            </p>
+
+            <div style={{ display: "flex", gap: "12px" }}>
+              <button
+                onClick={handlePaymentPending}
+                style={{
+                  flex: 1,
+                  background: "#f1f5f9",
+                  color: "#475569",
+                  border: "none",
+                  padding: "14px",
+                  borderRadius: "9999px",
+                  fontWeight: 700,
+                  fontSize: "0.95rem",
+                  cursor: "pointer",
+                  transition: "background 0.2s"
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = "#e2e8f0")}
+                onMouseLeave={(e) => (e.currentTarget.style.background = "#f1f5f9")}
+              >
+                No, Not Yet
+              </button>
+              <button
+                onClick={handlePaymentSuccess}
+                style={{
+                  flex: 1,
+                  background: "#4c1d95",
+                  color: "#ffffff",
+                  border: "none",
+                  padding: "14px",
+                  borderRadius: "9999px",
+                  fontWeight: 700,
+                  fontSize: "0.95rem",
+                  cursor: "pointer",
+                  transition: "background 0.2s"
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = "#5b21b6")}
+                onMouseLeave={(e) => (e.currentTarget.style.background = "#4c1d95")}
+              >
+                Yes, I Paid!
+              </button>
+            </div>
+
           </div>
         </div>
       )}
