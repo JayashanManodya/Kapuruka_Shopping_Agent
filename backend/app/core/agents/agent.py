@@ -126,7 +126,7 @@ def _has_checkout_details(messages) -> bool:
     has_date = bool(re.search(r'20\d{2}[-/]\d{2}[-/]\d{2}', human_text))
     # Location: city name or address keyword
     has_location = bool(re.search(
-        r'\b(colombo|kandy|galle|matara|kurunegala|jaffna|negombo|ratnapura|badulla|'
+        r'\b(colombo|kandy|galle|matara|kurunegala|jaffna|negombo|rathnapura|badulla|'
         r'kalutara|moratuwa|gampaha|anuradhapura|batticaloa|trincomalee|puttalam|'
         r'street|road|lane|mawatha|avenue|no\.|prince|deliver to|address)\b',
         human_text
