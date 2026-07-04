@@ -33,6 +33,7 @@ class MessageInput(BaseModel):
     tool_calls: list | None = None
     tool_call_id: str | None = None
     name: str | None = None
+    image_base64: str | None = None
 
 class ChatRequest(BaseModel):
     messages: list[MessageInput]
@@ -188,7 +189,17 @@ async def chat(request: ChatRequest):
             if msg.role == "system":
                 messages_to_send.append(SystemMessage(content=msg.content))
             elif msg.role in ("user", "human"):
-                messages_to_send.append(HumanMessage(content=msg.content))
+                if msg.image_base64:
+                    content_parts = []
+                    if msg.content:
+                        content_parts.append({"type": "text", "text": msg.content})
+                    content_parts.append({
+                        "type": "image_url",
+                        "image_url": {"url": msg.image_base64}
+                    })
+                    messages_to_send.append(HumanMessage(content=content_parts))
+                else:
+                    messages_to_send.append(HumanMessage(content=msg.content))
             elif msg.role in ("assistant", "ai"):
                 kwargs = {"content": msg.content or ""}
                 if msg.tool_calls:
@@ -244,7 +255,14 @@ async def chat(request: ChatRequest):
         
         # ── INTERCEPT STATIC TEMPLATES ──
         # Check if user explicitly asks for shopping categories
-        last_human_msg = next((m.content.lower() for m in reversed(messages_to_send) if isinstance(m, HumanMessage)), "")
+        def get_text_content(msg):
+            if isinstance(msg.content, str):
+                return msg.content
+            elif isinstance(msg.content, list):
+                return " ".join([p.get("text", "") for p in msg.content if isinstance(p, dict) and p.get("type") == "text"])
+            return ""
+
+        last_human_msg = next((get_text_content(m).lower() for m in reversed(messages_to_send) if isinstance(m, HumanMessage)), "")
         
         # Broad list of triggers
         category_triggers = ["categories", "category", "departments", "what's available", "explore what"]

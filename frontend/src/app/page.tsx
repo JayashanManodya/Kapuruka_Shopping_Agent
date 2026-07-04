@@ -25,6 +25,7 @@ interface Message {
   name?: string;
   hidden?: boolean;
   structured_response?: AgentResponse | null;
+  image_base64?: string;
 }
 
 // Structured response types — mirrors backend response_formats.py
@@ -310,8 +311,10 @@ export default function Home() {
   const [showLanguageModal, setShowLanguageModal] = useState(true);
   const [showFeaturesModal, setShowFeaturesModal] = useState(false);
   const [selectedLangTemp, setSelectedLangTemp] = useState("English");
+  const [attachedImage, setAttachedImage] = useState<string | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [isListening, setIsListening] = useState(false);
   const silenceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const recognitionRef = useRef<any>(null);
@@ -524,12 +527,40 @@ export default function Home() {
     localStorage.removeItem("kapruka_messages_v3");
   };
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    if (!file.type.startsWith("image/")) {
+      alert("Please select an image file.");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      alert("File is too large. Please select an image under 5MB.");
+      return;
+    }
+    
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      setAttachedImage(event.target?.result as string);
+    };
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  };
+
   const handleSendMessage = async (text: string, options?: { hidden?: boolean }) => {
-    if (!text.trim()) return;
-    const userMsg: Message = { role: "user", content: text, hidden: options?.hidden };
+    if (!text.trim() && !attachedImage) return;
+    
+    let finalContent = text.trim();
+    if (!finalContent && attachedImage) {
+      finalContent = "Please find items similar to this image.";
+    }
+
+    const userMsg: Message = { role: "user", content: finalContent, hidden: options?.hidden, image_base64: attachedImage || undefined };
     const updatedMessages = [...messages, userMsg];
     setMessages(updatedMessages);
     setInputText("");
+    setAttachedImage(null);
     setIsLoading(true);
 
     const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL as string;
@@ -543,7 +574,8 @@ export default function Home() {
             content: m.content,
             tool_calls: m.tool_calls,
             tool_call_id: m.tool_call_id,
-            name: m.name
+            name: m.name,
+            image_base64: m.image_base64
           })),
           user_email: null,
           cart: cartItems,
@@ -811,6 +843,14 @@ export default function Home() {
       <div className="animated-bg"></div>
       <div className="blob-3"></div>
 
+      <input 
+        type="file" 
+        accept="image/*" 
+        ref={fileInputRef} 
+        onChange={handleFileChange} 
+        style={{ display: "none" }} 
+      />
+
       {/* Top Branded Header */}
       <header className="top-header">
         <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
@@ -1024,6 +1064,12 @@ export default function Home() {
               </div>
 
               <div style={{ width: "100%", maxWidth: "600px", margin: "0 auto 24px auto" }}>
+                {attachedImage && (
+                  <div style={{ position: "relative", display: "inline-block", marginBottom: "8px", pointerEvents: "auto" }}>
+                    <img src={attachedImage} alt="Attached preview" style={{ height: "60px", borderRadius: "8px", border: "2px solid #5322B8", objectFit: "cover", boxShadow: "0 4px 6px rgba(0,0,0,0.1)" }} />
+                    <button onClick={() => setAttachedImage(null)} style={{ position: "absolute", top: "-8px", right: "-8px", background: "#ef4444", color: "#fff", border: "none", borderRadius: "50%", width: "24px", height: "24px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "14px", fontWeight: "bold" }}>×</button>
+                  </div>
+                )}
                 <div className="search-glow" style={{ background: "#fff", borderRadius: "999px", padding: "12px 24px", display: "flex", alignItems: "center", gap: "12px" }}>
                   <img src="/chatbot-logo.png" alt="Kiko" style={{ width: "24px", height: "24px", flexShrink: 0 }} />
                   <input
@@ -1036,16 +1082,16 @@ export default function Home() {
                     style={{ flex: 1, background: "transparent", border: "none", color: "#374151", fontSize: "1rem", outline: "none" }}
                   />
                   <button 
-                    onClick={() => inputText.trim() ? handleSendMessage(inputText) : toggleListening()} 
+                    onClick={() => (inputText.trim() || attachedImage) ? handleSendMessage(inputText) : toggleListening()} 
                     style={{ background: "transparent", border: "none", cursor: "pointer", padding: "6px", display: "flex", alignItems: "center", justifyContent: "center", color: "#4b5563" }}
                   >
-                    {inputText.trim() ? (
+                    {(inputText.trim() || attachedImage) ? (
                       <Send size={20} />
                     ) : (
                       <Mic size={20} color={isListening ? "#ef4444" : "currentColor"} />
                     )}
                   </button>
-                  <button style={{ background: "transparent", border: "none", cursor: "pointer", padding: "6px", display: "flex", alignItems: "center", justifyContent: "center", color: "#4b5563" }}>
+                  <button onClick={() => fileInputRef.current?.click()} style={{ background: "transparent", border: "none", cursor: "pointer", padding: "6px", display: "flex", alignItems: "center", justifyContent: "center", color: "#4b5563" }}>
                     <Paperclip size={20} />
                   </button>
                 </div>
@@ -1101,7 +1147,10 @@ export default function Home() {
                     if (isUser) {
                       return (
                         <div key={index} className="animate-fade-in" style={{ alignSelf: "flex-end", maxWidth: "100%", display: "flex", flexDirection: "row", alignItems: "flex-end", gap: "10px", width: "100%", justifyContent: "flex-end" }}>
-                          <div style={{ background: "var(--brand-purple-light)", padding: "14px 18px", borderRadius: "16px 16px 4px 16px", color: "#fff", fontSize: "0.95rem", lineHeight: 1.5, whiteSpace: "pre-wrap", wordBreak: "break-word", overflowWrap: "anywhere", border: "none", maxWidth: "75%" }}>
+                          <div style={{ background: "var(--brand-purple-light)", padding: "14px 18px", borderRadius: "16px 16px 4px 16px", color: "#fff", fontSize: "0.95rem", lineHeight: 1.5, whiteSpace: "pre-wrap", wordBreak: "break-word", overflowWrap: "anywhere", border: "none", maxWidth: "75%", display: "flex", flexDirection: "column", gap: "8px" }}>
+                            {msg.image_base64 && (
+                              <img src={msg.image_base64} alt="User attached" style={{ maxWidth: "100%", borderRadius: "8px", maxHeight: "200px", objectFit: "contain" }} />
+                            )}
                             {renderFormattedText(msg.content)}
                           </div>
                           <img src="/user-icon.png" alt="User" style={{ width: 36, height: 36, objectFit: "contain", flexShrink: 0 }} />
@@ -1151,11 +1200,18 @@ export default function Home() {
                 right: 0,
                 padding: "20px 24px",
                 display: "flex",
-                justifyContent: "center",
+                flexDirection: "column",
+                alignItems: "center",
                 background: "transparent",
                 pointerEvents: "none",
                 zIndex: 10
               }}>
+                {attachedImage && (
+                  <div style={{ position: "relative", marginBottom: "8px", pointerEvents: "auto", alignSelf: "center" }}>
+                    <img src={attachedImage} alt="Attached preview" style={{ height: "60px", borderRadius: "8px", border: "2px solid #5322B8", objectFit: "cover", boxShadow: "0 4px 6px rgba(0,0,0,0.1)" }} />
+                    <button onClick={() => setAttachedImage(null)} style={{ position: "absolute", top: "-8px", right: "-8px", background: "#ef4444", color: "#fff", border: "none", borderRadius: "50%", width: "24px", height: "24px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "14px", fontWeight: "bold" }}>×</button>
+                  </div>
+                )}
                 <div style={{
                   display: "flex",
                   gap: "12px",
@@ -1169,7 +1225,7 @@ export default function Home() {
                   border: "1px solid #d1d5db",
                   pointerEvents: "auto"
                 }}>
-                  <button style={{ background: "transparent", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "#666", padding: "8px", flexShrink: 0 }}>
+                  <button onClick={() => fileInputRef.current?.click()} style={{ background: "transparent", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "#666", padding: "8px", flexShrink: 0 }}>
                     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" /></svg>
                   </button>
                   <input
@@ -1182,7 +1238,7 @@ export default function Home() {
                     style={{ flex: 1, background: "transparent", border: "none", color: "#333", fontSize: "1rem", outline: "none", height: "40px" }}
                   />
                   <button
-                    onClick={() => inputText.trim() ? handleSendMessage(inputText) : toggleListening()}
+                    onClick={() => (inputText.trim() || attachedImage) ? handleSendMessage(inputText) : toggleListening()}
                     disabled={isLoading}
                     className={`glow-button ${isListening ? "listening" : ""}`}
                     style={{ background: isListening ? "#ef4444" : "var(--brand-purple-dark)", color: "#fff", border: "none", borderRadius: "50%", width: "44px", height: "44px", padding: 0, cursor: isLoading ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "background 0.2s" }}
@@ -1190,7 +1246,7 @@ export default function Home() {
                   >
                     {isListening ? (
                       <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16" /><rect x="14" y="4" width="4" height="16" /></svg>
-                    ) : inputText.trim() ? (
+                    ) : (inputText.trim() || attachedImage) ? (
                       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" /></svg>
                     ) : (
                       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/></svg>

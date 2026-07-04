@@ -115,12 +115,19 @@ async def call_search_agent(state: AgentState) -> dict:
     response = await search_agent_node.ainvoke({"messages": msgs})
     return {"messages": response["messages"]}
 
+def _get_text(content) -> str:
+    if isinstance(content, str):
+        return content
+    elif isinstance(content, list):
+        return " ".join([p.get("text", "") for p in content if isinstance(p, dict) and p.get("type") == "text"])
+    return str(content)
+
 def _has_checkout_details(messages) -> bool:
     """Check if the user has already provided the essential checkout fields (phone + date + city/address)."""
     import re
     # Scan ALL human messages — not just the trimmed window
     human_text = " ".join(
-        m.content for m in messages if getattr(m, "type", "") == "human"
+        _get_text(m.content) for m in messages if getattr(m, "type", "") == "human"
     ).lower()
 
     # Phone: Sri Lankan +94 format (with or without spaces/dashes) or local 07x format
@@ -155,7 +162,7 @@ def _is_confirming_order_summary(messages) -> bool:
     human_msgs = [m for m in messages if getattr(m, "type", "") == "human"]
     if not ai_msgs or not human_msgs:
         return False
-    last_human = human_msgs[-1].content.strip().lower()
+    last_human = _get_text(human_msgs[-1].content).strip().lower()
     is_affirmation = any(w in last_human for w in ["yes", "confirm", "proceed", "place", "create order", "go ahead", "ok", "sure", "yep", "yup"])
     if not is_affirmation:
         return False
@@ -202,7 +209,7 @@ async def verification_node(state: AgentState) -> dict:
     if not user_msgs or not ai_msgs:
         return {"next_node": END}
         
-    last_user = user_msgs[-1].content
+    last_user = _get_text(user_msgs[-1].content)
     last_ai = ai_msgs[-1].content
     
     # Skip verification for very short responses (greetings, etc.)
@@ -323,11 +330,16 @@ def serialize_messages(messages) -> str:
             role = "assistant"
             
         content = msg.content
+        image_base64 = None
+        
         if isinstance(content, list):
             text_parts = []
             for part in content:
-                if isinstance(part, dict) and "text" in part:
-                    text_parts.append(part["text"])
+                if isinstance(part, dict):
+                    if "text" in part:
+                        text_parts.append(part["text"])
+                    elif part.get("type") == "image_url":
+                        image_base64 = part["image_url"]["url"]
                 elif hasattr(part, "text"):
                     text_parts.append(part.text)
                 elif isinstance(part, str):
@@ -338,6 +350,9 @@ def serialize_messages(messages) -> str:
             "role": role,
             "content": content,
         }
+        
+        if image_base64:
+            msg_dict["image_base64"] = image_base64
         
         if hasattr(msg, "tool_calls") and msg.tool_calls:
             msg_dict["tool_calls"] = msg.tool_calls
