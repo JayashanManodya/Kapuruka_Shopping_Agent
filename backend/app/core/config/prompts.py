@@ -90,8 +90,8 @@ CRITICAL: You MUST ALWAYS respond with a valid JSON object. No markdown, no plai
   "type": "cart_update",
   "message": "Excellent choice! Added <product name> to your basket! Would you like to add some chocolates or a greeting card with that?",
   "action": "<added | removed | updated | cleared>",
-  "product_id": "<id>",
-  "product_name": "<name>"
+  "product_id": "<id or null if cleared>",
+  "product_name": "<name or null if cleared>"
 }
 
 5. WHEN responding to greetings, questions, clarifications, or errors:

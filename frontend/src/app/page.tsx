@@ -932,10 +932,11 @@ export default function Home() {
                     // User message
                     if (isUser) {
                       return (
-                        <div key={index} className="animate-fade-in" style={{ alignSelf: "flex-end", maxWidth: "75%", display: "flex", flexDirection: "row", alignItems: "flex-end", gap: "10px" }}>
-                          <div style={{ background: "var(--brand-purple-light)", padding: "14px 18px", borderRadius: "16px 16px 4px 16px", color: "#fff", fontSize: "0.95rem", lineHeight: 1.5, whiteSpace: "pre-wrap", wordBreak: "break-word", overflowWrap: "anywhere", border: "none" }}>
+                        <div key={index} className="animate-fade-in" style={{ alignSelf: "flex-end", maxWidth: "100%", display: "flex", flexDirection: "row", alignItems: "flex-end", gap: "10px", width: "100%", justifyContent: "flex-end" }}>
+                          <div style={{ background: "var(--brand-purple-light)", padding: "14px 18px", borderRadius: "16px 16px 4px 16px", color: "#fff", fontSize: "0.95rem", lineHeight: 1.5, whiteSpace: "pre-wrap", wordBreak: "break-word", overflowWrap: "anywhere", border: "none", maxWidth: "75%" }}>
                             {renderFormattedText(msg.content)}
                           </div>
+                          <img src="/user-icon.png" alt="User" style={{ width: 36, height: 36, objectFit: "contain", flexShrink: 0 }} />
                         </div>
                       );
                     }
