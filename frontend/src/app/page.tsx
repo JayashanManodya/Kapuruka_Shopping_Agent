@@ -1157,8 +1157,17 @@ export default function Home() {
               </div>
 
               {/* Footer */}
-              <div style={{ position: "absolute", bottom: "32px", left: 0, right: 0, textAlign: "center", fontSize: "0.8rem", color: "#6b7280" }}>
-                Built by <a href="https://www.jayashan.online/" target="_blank" rel="noopener noreferrer" style={{ color: "#5322B8", fontWeight: "bold", textDecoration: "none" }}>Jayashan Manodya</a> • Powered by <span style={{ color: "#5322B8", fontWeight: "bold" }}>Kapruka MCP</span>
+              <div style={{ position: "absolute", bottom: "8px", left: 0, right: 0, textAlign: "center", fontSize: "0.8rem", color: "#6b7280", display: "flex", justifyContent: "center", alignItems: "center" }}>
+                <span>Built by <a href="https://www.jayashan.online/" target="_blank" rel="noopener noreferrer" style={{ color: "#5322B8", fontWeight: "bold", textDecoration: "none" }}>Jayashan Manodya</a> • Powered by <span style={{ color: "#5322B8", fontWeight: "bold" }}>Kapruka MCP</span></span>
+                <div style={{ position: "absolute", right: "24px", display: "flex", alignItems: "center", gap: "10px" }}>
+                  <span style={{ fontSize: "0.7rem", fontFamily: "monospace", textTransform: "uppercase", letterSpacing: "0.5px", color: "#8b8aad" }}>System Status</span>
+                  <div className="status-dot" style={{
+                    width: "8px", height: "8px", borderRadius: "50%",
+                    background: process.env.NEXT_PUBLIC_ACTIVE_ENV === 'true' ? "#22c55e" : "#ef4444",
+                    boxShadow: process.env.NEXT_PUBLIC_ACTIVE_ENV === 'true' ? "0 0 8px #22c55e" : "0 0 8px #ef4444",
+                    animation: "blink 1.5s infinite"
+                  }}></div>
+                </div>
               </div>
             </div>
           ) : (
