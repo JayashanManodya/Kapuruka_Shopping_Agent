@@ -652,7 +652,7 @@ export default function Home() {
         role: m.role, content: m.content, tool_calls: m.tool_calls, name: m.name, tool_call_id: m.tool_call_id
       }));
       const existingMsg = messages[msgIndex];
-      const existingItems = existingMsg.structured_response?.items || [];
+      const existingItems = (existingMsg.structured_response as any)?.items || [];
       const amountToRequest = existingItems.length + 10;
 
       // Find the last actual user request
