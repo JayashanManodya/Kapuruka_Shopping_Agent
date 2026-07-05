@@ -907,7 +907,7 @@ export default function Home() {
               alt="KIKO"
               className="header-kiko-logo"
             />
-            <span className="hide-on-mobile" style={{ fontSize: "1.3rem", fontWeight: 800, color: "#2D2375", letterSpacing: "0.5px" }}>KIKO</span>
+            <span className="hide-on-mobile" style={{ fontSize: "1.1rem", fontWeight: 800, color: "#2D2375", letterSpacing: "0.5px" }}>KIKO</span>
           </div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
