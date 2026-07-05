@@ -300,20 +300,17 @@ workflow.add_node("Supervisor", supervisor_node)
 workflow.add_node("Search", call_search_agent)
 workflow.add_node("Checkout", call_checkout_agent)
 workflow.add_node("Tracking", call_tracking_agent)
-workflow.add_node("Verification", verification_node)
 
 workflow.add_edge(START, "Supervisor")
-workflow.add_conditional_edges("Supervisor", route_from_supervisor, {
-    "Search": "Search",
-    "Checkout": "Checkout",
-    "Tracking": "Tracking"
-})
 
-workflow.add_edge("Search", "Verification")
-workflow.add_edge("Checkout", "Verification")
-workflow.add_edge("Tracking", "Verification")
+workflow.add_conditional_edges(
+    "Supervisor",
+    route_from_supervisor
+)
 
-workflow.add_conditional_edges("Verification", route_from_verification)
+workflow.add_edge("Search", END)
+workflow.add_edge("Checkout", END)
+workflow.add_edge("Tracking", END)
 
 # Compile the workflow completely statelessly. 
 # Memory persistence is managed entirely by the frontend via local storage.
