@@ -93,7 +93,7 @@ export default function RecommendedItems({ message, items, onAddToCart, onViewDe
                   <img
                     src={item.image_url}
                     alt={item.name}
-                    style={{ width: "100%", height: "160px", objectFit: "contain", background: "#fff", marginBottom: "10px" }}
+                    style={{ width: "100%", aspectRatio: "1/1", objectFit: "cover", background: "#f8f9fa", marginBottom: "12px", borderRadius: "12px" }}
                   />
                 )}
                 {/* Product Name */}
