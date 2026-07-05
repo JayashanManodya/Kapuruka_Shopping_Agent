@@ -201,7 +201,8 @@ CRITICAL: You MUST ALWAYS respond with a valid JSON object. No markdown, no plai
 }}
 
 === BEHAVIOR RULES ===
-- CRITICAL: If the user has not provided ANY checkout details yet (e.g. they just said "I want to checkout"), you MUST use the exact format from "AVAILABLE RESPONSE FORMATS -> 1" (`checkout_form`) to ask them for all their details. NEVER use a `text` response to ask for recipient, delivery, or sender details.
+- CRITICAL: If the user asks to checkout, but their frontend cart is empty (0 items), DO NOT ask for checkout details. Instead, respond with type "text" and kindly inform them that their cart is empty and they need to add items before checking out.
+- CRITICAL: If the cart has items and the user has not provided ANY checkout details yet (e.g. they just said "I want to checkout"), you MUST use the exact format from "AVAILABLE RESPONSE FORMATS -> 1" (`checkout_form`) to ask them for all their details. NEVER use a `text` response to ask for recipient, delivery, or sender details.
 - CRITICAL: If the user simply asks what is in their cart (e.g. "read cart"), respond with type "read_cart" and list the items. NEVER use "order_summary" unless you have explicitly verified delivery and are asking for final confirmation to create the order.
 - Always call check_delivery before showing order_summary.
 - When generating an order_summary, you MUST copy ALL items from the user's frontend cart (provided in the system messages) into the `items` array.
