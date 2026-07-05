@@ -147,17 +147,18 @@ export default function RecommendedItems({ message, items, onAddToCart, onViewDe
             <button
               onClick={onLoadMore}
               disabled={isLoadingMore}
-              style={{ background: "#ffffff", border: "1px solid var(--brand-purple)", color: "var(--brand-purple)", fontWeight: 600, padding: "8px 20px", borderRadius: "20px", fontSize: "0.85rem", cursor: isLoadingMore ? "wait" : "pointer", transition: "all 0.2s", opacity: isLoadingMore ? 0.7 : 1 }}
-              onMouseEnter={e => { if (!isLoadingMore) e.currentTarget.style.background = "rgba(57, 32, 97, 0.05)"; }}
-              onMouseLeave={e => { if (!isLoadingMore) e.currentTarget.style.background = "#ffffff"; }}
+              style={{ 
+                background: "transparent", 
+                border: "none", 
+                color: "var(--brand-purple)", 
+                fontWeight: 600, 
+                fontSize: "0.85rem", 
+                cursor: isLoadingMore ? "wait" : "pointer", 
+                textDecoration: "underline", 
+                opacity: isLoadingMore ? 0.7 : 1 
+              }}
             >
-              {isLoadingMore ? (
-                <span style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                  <div className="typing-dot" style={{ width: "6px", height: "6px" }}></div>
-                  <div className="typing-dot" style={{ width: "6px", height: "6px" }}></div>
-                  <div className="typing-dot" style={{ width: "6px", height: "6px" }}></div>
-                </span>
-              ) : "Load more products"}
+              {isLoadingMore ? "Loading..." : "Load more products"}
             </button>
           </div>
         )}

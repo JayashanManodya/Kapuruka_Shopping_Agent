@@ -306,6 +306,7 @@ export default function Home() {
   const [showPostPaymentDialog, setShowPostPaymentDialog] = useState(false);
   const [currentOrderRef, setCurrentOrderRef] = useState<string | null>(null);
   const [loadingMoreIds, setLoadingMoreIds] = useState<Record<number, boolean>>({});
+  const [loadMoreCounts, setLoadMoreCounts] = useState<Record<number, number>>({});
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [language, setLanguage] = useState("English");
   const [showLanguageModal, setShowLanguageModal] = useState(false);
@@ -535,7 +536,7 @@ export default function Home() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    
+
     if (!file.type.startsWith("image/")) {
       alert("Please select an image file.");
       return;
@@ -544,7 +545,7 @@ export default function Home() {
       alert("File is too large. Please select an image under 5MB.");
       return;
     }
-    
+
     const reader = new FileReader();
     reader.onload = (event) => {
       setAttachedImage(event.target?.result as string);
@@ -555,7 +556,7 @@ export default function Home() {
 
   const handleSendMessage = async (text: string, options?: { hidden?: boolean }) => {
     if (!text.trim() && !attachedImage) return;
-    
+
     let finalContent = text.trim();
     if (!finalContent && attachedImage) {
       finalContent = "Please find items similar to this image.";
@@ -642,12 +643,28 @@ export default function Home() {
   };
 
   const handleLoadMore = async (msgIndex: number) => {
+    const currentCount = loadMoreCounts[msgIndex] || 0;
+    if (currentCount >= 3) return;
+
     setLoadingMoreIds(prev => ({ ...prev, [msgIndex]: true }));
     try {
       const historyUpToMessage = messages.slice(0, msgIndex + 1).map(m => ({
         role: m.role, content: m.content, tool_calls: m.tool_calls, name: m.name, tool_call_id: m.tool_call_id
       }));
-      historyUpToMessage.push({ role: "user", content: "Please provide up to 10 MORE different products for my previous request. DO NOT repeat any of the products you just listed.", tool_calls: undefined, name: undefined, tool_call_id: undefined });
+      const existingMsg = messages[msgIndex];
+      const existingItems = existingMsg.structured_response?.items || [];
+      const amountToRequest = existingItems.length + 10;
+
+      // Find the last actual user request
+      let lastUserReq = "this category";
+      for (let i = historyUpToMessage.length - 1; i >= 0; i--) {
+        if (historyUpToMessage[i].role === "user") {
+          lastUserReq = historyUpToMessage[i].content;
+          break;
+        }
+      }
+
+      historyUpToMessage.push({ role: "user", content: `Please provide up to ${amountToRequest} products for: "${lastUserReq}"`, tool_calls: undefined, name: undefined, tool_call_id: undefined });
 
       const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL as string;
       const response = await fetch(`${apiBaseUrl}/api/chat`, {
@@ -689,6 +706,7 @@ export default function Home() {
       console.error("Failed to load more products:", error);
     } finally {
       setLoadingMoreIds(prev => ({ ...prev, [msgIndex]: false }));
+      setLoadMoreCounts(prev => ({ ...prev, [msgIndex]: (prev[msgIndex] || 0) + 1 }));
     }
   };
 
@@ -710,7 +728,7 @@ export default function Home() {
             carouselId={`carousel-${msgIndex}`}
             onAddToCart={(item) => addToCart({ id: item.id, name: item.name, price: item.price, image_url: item.image_url })}
             onViewDetails={(item) => handleSendMessage(`Please retrieve details for product ${item.id}`)}
-            onLoadMore={() => handleLoadMore(msgIndex)}
+            onLoadMore={(loadMoreCounts[msgIndex] || 0) < 3 ? () => handleLoadMore(msgIndex) : undefined}
             isLoadingMore={loadingMoreIds[msgIndex]}
           />
         );
@@ -864,12 +882,12 @@ export default function Home() {
       <div className="animated-bg"></div>
       <div className="blob-3"></div>
 
-      <input 
-        type="file" 
-        accept="image/*" 
-        ref={fileInputRef} 
-        onChange={handleFileChange} 
-        style={{ display: "none" }} 
+      <input
+        type="file"
+        accept="image/*"
+        ref={fileInputRef}
+        onChange={handleFileChange}
+        style={{ display: "none" }}
       />
 
       {/* Top Branded Header */}
@@ -1108,9 +1126,9 @@ export default function Home() {
                     disabled={isLoading}
                     style={{ flex: 1, background: "transparent", border: "none", color: "#374151", fontSize: "1rem", outline: "none" }}
                   />
-                  <button 
+                  <button
                     id="send-msg-btn"
-                    onClick={() => (inputText.trim() || attachedImage) ? handleSendMessage(inputText) : toggleListening()} 
+                    onClick={() => (inputText.trim() || attachedImage) ? handleSendMessage(inputText) : toggleListening()}
                     style={{ background: "transparent", border: "none", cursor: "pointer", padding: "6px", display: "flex", alignItems: "center", justifyContent: "center", color: "#4b5563" }}
                   >
                     {(inputText.trim() || attachedImage) ? (
@@ -1276,7 +1294,7 @@ export default function Home() {
                     ) : (inputText.trim() || attachedImage) ? (
                       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" /></svg>
                     ) : (
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/></svg>
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" /><path d="M19 10v2a7 7 0 0 1-14 0v-2" /><line x1="12" y1="19" x2="12" y2="22" /></svg>
                     )}
                   </button>
                 </div>
@@ -1465,7 +1483,7 @@ export default function Home() {
       {showPostPaymentDialog && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(15, 23, 42, 0.45)", backdropFilter: "blur(4px)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: "20px" }}>
           <div style={{ background: "#ffffff", borderRadius: "24px", padding: "32px", width: "100%", maxWidth: "440px", boxShadow: "0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04)", textAlign: "center" }}>
-            
+
             <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "6px", color: "#6b21a8", fontSize: "0.8rem", fontWeight: 700, letterSpacing: "0.05em", textTransform: "uppercase", marginBottom: "12px" }}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><line x1="12" y1="16" x2="12" y2="12" /><line x1="12" y1="8" x2="12.01" y2="8" /></svg>
               Payment Confirmation
