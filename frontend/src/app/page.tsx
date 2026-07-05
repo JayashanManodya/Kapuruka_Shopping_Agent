@@ -193,7 +193,7 @@ const LOCALIZATION: Record<string, {
   landingGreeting: React.ReactNode;
   inputPlaceholderEmpty: string;
   inputPlaceholderFloating: string;
-  categories: { original: string; label: string }[];
+  categories: { original: string; label: string; query?: string }[];
   cartAdded: (name: string) => string;
   orderCreated: string;
   paymentSuccessMsg: string;
@@ -204,12 +204,13 @@ const LOCALIZATION: Record<string, {
     inputPlaceholderEmpty: "Ask anything you want...",
     inputPlaceholderFloating: "Ask Kapruka Agent...",
     categories: [
-      { original: "Birthday Gifts", label: "Birthday Gifts" },
-      { original: "Flowers", label: "Flowers" },
-      { original: "Cakes", label: "Cakes" },
-      { original: "Chocolates", label: "Chocolates" },
-      { original: "Groceries", label: "Groceries" },
-      { original: "Check Delivery", label: "Check Delivery" }
+      { original: "gifts for her", label: "🎁 Gifts for Her" },
+      { original: "Flowers", label: "💐 Send Flowers" },
+      { original: "Cakes", label: "🎂 Order Cakes" },
+      { original: "Chocolates", label: "🍫 Buy Chocolates" },
+      { original: "categories", label: "🛍️ Browse Categories" },
+      { original: "track my order", label: "📦 Track My Order", query: "Can I track my order" },
+      { original: "Check Delivery", label: "🚚 Check Delivery" }
     ],
     cartAdded: (name) => `Added ${name} to your basket! 🛒`,
     orderCreated: "Your order has been created successfully! 🎉",
@@ -221,12 +222,13 @@ const LOCALIZATION: Record<string, {
     inputPlaceholderEmpty: "ඔබට අවශ්‍ය ඕනෑම දෙයක් අසන්න...",
     inputPlaceholderFloating: "කපෘක නියෝජිතයාගෙන් අසන්න...",
     categories: [
-      { original: "Birthday Gifts", label: "උපන්දින තෑගි" },
-      { original: "Flowers", label: "මල්" },
-      { original: "Cakes", label: "කේක්" },
-      { original: "Chocolates", label: "චොකලට්" },
-      { original: "Groceries", label: "බඩු බාහිරාදිය" },
-      { original: "Check Delivery", label: "බෙදාහැරීම් පරීක්ෂාව" }
+      { original: "gifts for her", label: "🎁 ඇයට තෑගි" },
+      { original: "Flowers", label: "💐 මල් යවන්න" },
+      { original: "Cakes", label: "🎂 කේක් ඇණවුම් කරන්න" },
+      { original: "Chocolates", label: "🍫 චොකලට් මිලදී ගන්න" },
+      { original: "categories", label: "🛍️ කාණ්ඩ පිරික්සන්න" },
+      { original: "track my order", label: "📦 මගේ ඇණවුම නිරීක්ෂණය කරන්න", query: "Can I track my order" },
+      { original: "Check Delivery", label: "🚚 බෙදාහැරීම් පරීක්ෂාව" }
     ],
     cartAdded: (name) => `${name} ඔබේ කූඩයට එකතු කරන ලදී! 🛒`,
     orderCreated: "ඔබගේ ඇණවුම සාර්ථකව නිර්මාණය කරන ලදී! 🎉",
@@ -238,12 +240,13 @@ const LOCALIZATION: Record<string, {
     inputPlaceholderEmpty: "Oyata one deyak ahanna...",
     inputPlaceholderFloating: "Kapruka Agent gen ahanna...",
     categories: [
-      { original: "Birthday Gifts", label: "Birthday Gifts" },
-      { original: "Flowers", label: "Mal (Flowers)" },
-      { original: "Cakes", label: "Cakes" },
-      { original: "Chocolates", label: "Chocolates" },
-      { original: "Groceries", label: "Groceries" },
-      { original: "Check Delivery", label: "Delivery Check" }
+      { original: "gifts for her", label: "🎁 Eyata Thegi" },
+      { original: "Flowers", label: "💐 Mal Yawanna" },
+      { original: "Cakes", label: "🎂 Cakes Order Karanna" },
+      { original: "Chocolates", label: "🍫 Chocolates Ganna" },
+      { original: "categories", label: "🛍️ Categories Balanna" },
+      { original: "track my order", label: "📦 Mage Order Eka Track Karanna", query: "Can I track my order" },
+      { original: "Check Delivery", label: "🚚 Delivery Check Karanna" }
     ],
     cartAdded: (name) => `${name} oyage cart ekata add kala! 🛒`,
     orderCreated: "Oyage order eka successfully create kala! 🎉",
@@ -255,12 +258,13 @@ const LOCALIZATION: Record<string, {
     inputPlaceholderEmpty: "உங்களுக்கு தேவையானதை கேளுங்கள்...",
     inputPlaceholderFloating: "கப்ருகா முகவரிடம் கேளுங்கள்...",
     categories: [
-      { original: "Birthday Gifts", label: "பிறந்தநாள் பரிசுகள்" },
-      { original: "Flowers", label: "பூக்கள்" },
-      { original: "Cakes", label: "கேக்குகள்" },
-      { original: "Chocolates", label: "சாக்லேட்டுகள்" },
-      { original: "Groceries", label: "மளிகை பொருட்கள்" },
-      { original: "Check Delivery", label: "டெலிவரி சரிபார்க்கவும்" }
+      { original: "gifts for her", label: "🎁 அவளுக்கான பரிசுகள்" },
+      { original: "Flowers", label: "💐 பூக்களை அனுப்புங்கள்" },
+      { original: "Cakes", label: "🎂 கேக்குகளை ஆர்டர் செய்யுங்கள்" },
+      { original: "Chocolates", label: "🍫 சாக்லேட்டுகளை வாங்குங்கள்" },
+      { original: "categories", label: "🛍️ வகைகளை உலாவுக" },
+      { original: "track my order", label: "📦 எனது ஆர்டரை கண்காணிக்கவும்", query: "Can I track my order" },
+      { original: "Check Delivery", label: "🚚 டெலிவரி சரிபார்க்கவும்" }
     ],
     cartAdded: (name) => `${name} உங்கள் கூடையில் சேர்க்கப்பட்டது! 🛒`,
     orderCreated: "உங்கள் ஆர்டர் வெற்றிகரமாக உருவாக்கப்பட்டது! 🎉",
@@ -272,12 +276,13 @@ const LOCALIZATION: Record<string, {
     inputPlaceholderEmpty: "Ungaluku vena de kelunga...",
     inputPlaceholderFloating: "Kapruka Agent kitta kelunga...",
     categories: [
-      { original: "Birthday Gifts", label: "Birthday Gifts" },
-      { original: "Flowers", label: "Pookkal (Flowers)" },
-      { original: "Cakes", label: "Cakes" },
-      { original: "Chocolates", label: "Chocolates" },
-      { original: "Groceries", label: "Groceries" },
-      { original: "Check Delivery", label: "Delivery Check" }
+      { original: "gifts for her", label: "🎁 Avalukkana Parisugal" },
+      { original: "Flowers", label: "💐 Pookkal Anuppunga" },
+      { original: "Cakes", label: "🎂 Cakes Order Pannunga" },
+      { original: "Chocolates", label: "🍫 Chocolates Vaangunga" },
+      { original: "categories", label: "🛍️ Categories Paarunga" },
+      { original: "track my order", label: "📦 En Order Ah Track Pannunga", query: "Can I track my order" },
+      { original: "Check Delivery", label: "🚚 Delivery Check Pannunga" }
     ],
     cartAdded: (name) => `${name} unga basket la add panniyachu! 🛒`,
     orderCreated: "Unga order successfully create panniyachu! 🎉",
@@ -1148,7 +1153,7 @@ export default function Home() {
                 {(LOCALIZATION[language] || LOCALIZATION["English"]).categories.map((cat) => (
                   <button
                     key={cat.original}
-                    onClick={() => handleSendMessage(`Show me ${cat.original}`)}
+                    onClick={() => handleSendMessage(cat.query || `Show me ${cat.original}`)}
                     style={{ background: "#5322B8", color: "#fff", border: "none", borderRadius: "999px", padding: "6px 18px", fontSize: "0.85rem", fontWeight: 600, cursor: "pointer", transition: "all 0.2s ease" }}
                   >
                     {cat.label}
