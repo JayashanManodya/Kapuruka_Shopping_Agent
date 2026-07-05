@@ -105,7 +105,7 @@ export default function CheckoutForm({ message, initialData, onSubmit }: Checkou
   return (
     <div className="animate-fade-in agent-card-glow" style={{ width: "100%", maxWidth: "420px", display: "flex", flexDirection: "column", gap: "12px", background: "#fff", borderRadius: "20px", overflow: "hidden", boxShadow: "0 10px 40px -10px rgba(0,0,0,0.1), 0 0 0 1px rgba(0,0,0,0.05)", border: "1px solid rgba(83,34,184,0.1)" }}>
       {/* Header */}
-      <div style={{ background: "#3b2667", padding: "18px 24px", color: "#fff", display: "flex", alignItems: "center", gap: "12px" }}>
+      <div style={{ background: "#3b2667", padding: "18px 24px", color: "#fff", display: "flex", alignItems: "center", gap: "12px", borderBottom: "3px solid #facc15" }}>
         <Truck size={22} color="#fff" />
         <span style={{ fontWeight: 700, fontSize: "1.1rem", color: "#fff", letterSpacing: "0.3px" }}>Delivery Details</span>
       </div>

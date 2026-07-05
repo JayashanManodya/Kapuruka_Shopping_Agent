@@ -27,7 +27,7 @@ export default function ReadCart({ message, items, total, onViewCart }: Props) {
   return (
     <div className="animate-fade-in glass-panel agent-card-glow" style={{ background: "#ffffff", borderRadius: "16px 16px 16px 4px", padding: 0, maxWidth: "420px", border: "1px solid var(--glass-border)", overflow: "hidden", display: "flex", flexDirection: "column" }}>
       {/* Purple Header Bar */}
-      <div style={{ background: "#3b2667", padding: "10px 18px", display: "flex", alignItems: "center", gap: "10px" }}>
+      <div style={{ background: "#3b2667", padding: "10px 18px", display: "flex", alignItems: "center", gap: "10px", borderBottom: "3px solid #facc15" }}>
         <ShoppingCart size={18} color="#fff" />
         <span style={{ fontWeight: 700, fontSize: "1.05rem", color: "#fff" }}>Your Cart</span>
       </div>

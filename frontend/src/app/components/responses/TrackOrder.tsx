@@ -25,9 +25,9 @@ export default function TrackOrder({ message, order_ref, status, timeline, recip
         {message}
       </div>
 
-      <div className="animate-fade-in agent-card-glow" style={{ background: "#3b2667", borderRadius: "16px", padding: "20px", maxWidth: "460px", boxShadow: "0 8px 32px rgba(0,0,0,0.3)" }}>
+      <div className="animate-fade-in agent-card-glow" style={{ background: "#3b2667", borderRadius: "16px", maxWidth: "460px", boxShadow: "0 8px 32px rgba(0,0,0,0.3)", overflow: "hidden" }}>
         {/* Header */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "20px", borderBottom: "3px solid #facc15" }}>
           <div>
             <div style={{ fontSize: "0.7rem", color: "#8b8aad", textTransform: "uppercase", letterSpacing: "0.5px", fontWeight: 700 }}>ORDER</div>
             <div style={{ color: "#facc15", fontFamily: "monospace", fontWeight: 700, fontSize: "1rem" }}>{order_ref}</div>
@@ -36,6 +36,8 @@ export default function TrackOrder({ message, order_ref, status, timeline, recip
             <span style={{ color: "#facc15", fontWeight: 700, fontSize: "0.85rem" }}>{status}</span>
           </div>
         </div>
+        
+        <div style={{ padding: "20px", paddingTop: "16px" }}>
 
         {/* Timeline */}
         {timeline && timeline.length > 0 && (
@@ -104,6 +106,7 @@ export default function TrackOrder({ message, order_ref, status, timeline, recip
             ))}
           </div>
         )}
+        </div>
       </div>
     </div>
   );

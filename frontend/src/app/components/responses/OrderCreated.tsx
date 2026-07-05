@@ -22,11 +22,13 @@ export default function OrderCreated({ message, checkout_url, order_ref, expires
         {message}
       </div>
 
-      <div className="animate-fade-in agent-card-glow" style={{ background: "#3b2667", borderRadius: "16px", padding: "20px", maxWidth: "420px", boxShadow: "0 8px 32px rgba(0,0,0,0.2)" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "20px" }}>
+      <div className="animate-fade-in agent-card-glow" style={{ background: "#3b2667", borderRadius: "16px", maxWidth: "420px", boxShadow: "0 8px 32px rgba(0,0,0,0.2)", overflow: "hidden" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "20px", borderBottom: "3px solid #facc15" }}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#facc15" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
           <span style={{ fontWeight: 700, fontSize: "1.1rem", color: "#fff" }}>Order Confirmed!</span>
         </div>
+        
+        <div style={{ padding: "20px", paddingTop: "16px" }}>
 
         <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "12px", color: "#e2d9f3", fontSize: "0.95rem" }}>
           <span>Order Ref</span>
@@ -81,6 +83,7 @@ export default function OrderCreated({ message, checkout_url, order_ref, expires
             </div>
           </div>
         )}
+        </div>
       </div>
     </div>
   );
