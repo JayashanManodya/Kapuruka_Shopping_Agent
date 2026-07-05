@@ -204,13 +204,13 @@ const LOCALIZATION: Record<string, {
     inputPlaceholderEmpty: "Ask anything you want...",
     inputPlaceholderFloating: "Ask Kapruka Agent...",
     categories: [
-      { original: "gifts for her", label: "🎁 Gifts for Her" },
-      { original: "Flowers", label: "💐 Send Flowers" },
-      { original: "Cakes", label: "🎂 Order Cakes" },
-      { original: "Chocolates", label: "🍫 Buy Chocolates" },
-      { original: "categories", label: "🛍️ Browse Categories" },
-      { original: "track my order", label: "📦 Track My Order", query: "Can I track my order" },
-      { original: "Check Delivery", label: "🚚 Check Delivery" }
+      { original: "gifts for her", label: "Gifts for Her" },
+      { original: "Flowers", label: "Send Flowers" },
+      { original: "Cakes", label: "Order Cakes" },
+      { original: "Chocolates", label: "Buy Chocolates" },
+      { original: "categories", label: "Browse Categories" },
+      { original: "track my order", label: "Track My Order", query: "Can I track my order" },
+      { original: "Check Delivery", label: "Check Delivery" }
     ],
     cartAdded: (name) => `Added ${name} to your basket! 🛒`,
     orderCreated: "Your order has been created successfully! 🎉",
@@ -222,13 +222,13 @@ const LOCALIZATION: Record<string, {
     inputPlaceholderEmpty: "ඔබට අවශ්‍ය ඕනෑම දෙයක් අසන්න...",
     inputPlaceholderFloating: "කපෘක නියෝජිතයාගෙන් අසන්න...",
     categories: [
-      { original: "gifts for her", label: "🎁 ඇයට තෑගි" },
-      { original: "Flowers", label: "💐 මල් යවන්න" },
-      { original: "Cakes", label: "🎂 කේක් ඇණවුම් කරන්න" },
-      { original: "Chocolates", label: "🍫 චොකලට් මිලදී ගන්න" },
-      { original: "categories", label: "🛍️ කාණ්ඩ පිරික්සන්න" },
-      { original: "track my order", label: "📦 මගේ ඇණවුම නිරීක්ෂණය කරන්න", query: "Can I track my order" },
-      { original: "Check Delivery", label: "🚚 බෙදාහැරීම් පරීක්ෂාව" }
+      { original: "gifts for her", label: "ඇයට තෑගි", query: "ඇයට තෑගි පෙන්වන්න" },
+      { original: "Flowers", label: "මල් යවන්න", query: "මල් පෙන්වන්න" },
+      { original: "Cakes", label: "කේක් ඇණවුම් කරන්න", query: "කේක් පෙන්වන්න" },
+      { original: "Chocolates", label: "චොකලට් මිලදී ගන්න", query: "චොකලට් පෙන්වන්න" },
+      { original: "categories", label: "කාණ්ඩ පිරික්සන්න", query: "කාණ්ඩ පෙන්වන්න" },
+      { original: "track my order", label: "මගේ ඇණවුම නිරීක්ෂණය කරන්න", query: "මට මගේ ඇණවුම නිරීක්ෂණය කළ හැකිද" },
+      { original: "Check Delivery", label: "බෙදාහැරීම් පරීක්ෂාව", query: "බෙදාහැරීම් පරීක්ෂාව පෙන්වන්න" }
     ],
     cartAdded: (name) => `${name} ඔබේ කූඩයට එකතු කරන ලදී! 🛒`,
     orderCreated: "ඔබගේ ඇණවුම සාර්ථකව නිර්මාණය කරන ලදී! 🎉",
@@ -240,13 +240,13 @@ const LOCALIZATION: Record<string, {
     inputPlaceholderEmpty: "Oyata one deyak ahanna...",
     inputPlaceholderFloating: "Kapruka Agent gen ahanna...",
     categories: [
-      { original: "gifts for her", label: "🎁 Eyata Thegi" },
-      { original: "Flowers", label: "💐 Mal Yawanna" },
-      { original: "Cakes", label: "🎂 Cakes Order Karanna" },
-      { original: "Chocolates", label: "🍫 Chocolates Ganna" },
-      { original: "categories", label: "🛍️ Categories Balanna" },
-      { original: "track my order", label: "📦 Mage Order Eka Track Karanna", query: "Can I track my order" },
-      { original: "Check Delivery", label: "🚚 Delivery Check Karanna" }
+      { original: "gifts for her", label: "Eyata Thegi", query: "Eyata thegi pennanna" },
+      { original: "Flowers", label: "Mal Yawanna", query: "Mal pennanna" },
+      { original: "Cakes", label: "Cakes Order Karanna", query: "Cakes pennanna" },
+      { original: "Chocolates", label: "Chocolates Ganna", query: "Chocolates pennanna" },
+      { original: "categories", label: "Categories Balanna", query: "Categories pennanna" },
+      { original: "track my order", label: "Mage Order Eka Track Karanna", query: "Mage order eka track karanna puluwanda" },
+      { original: "Check Delivery", label: "Delivery Check Karanna", query: "Delivery check karanna" }
     ],
     cartAdded: (name) => `${name} oyage cart ekata add kala! 🛒`,
     orderCreated: "Oyage order eka successfully create kala! 🎉",
@@ -258,13 +258,13 @@ const LOCALIZATION: Record<string, {
     inputPlaceholderEmpty: "உங்களுக்கு தேவையானதை கேளுங்கள்...",
     inputPlaceholderFloating: "கப்ருகா முகவரிடம் கேளுங்கள்...",
     categories: [
-      { original: "gifts for her", label: "🎁 அவளுக்கான பரிசுகள்" },
-      { original: "Flowers", label: "💐 பூக்களை அனுப்புங்கள்" },
-      { original: "Cakes", label: "🎂 கேக்குகளை ஆர்டர் செய்யுங்கள்" },
-      { original: "Chocolates", label: "🍫 சாக்லேட்டுகளை வாங்குங்கள்" },
-      { original: "categories", label: "🛍️ வகைகளை உலாவுக" },
-      { original: "track my order", label: "📦 எனது ஆர்டரை கண்காணிக்கவும்", query: "Can I track my order" },
-      { original: "Check Delivery", label: "🚚 டெலிவரி சரிபார்க்கவும்" }
+      { original: "gifts for her", label: "அவளுக்கான பரிசுகள்", query: "அவளுக்கான பரிசுகளை காட்டுங்கள்" },
+      { original: "Flowers", label: "பூக்களை அனுப்புங்கள்", query: "பூக்களை காட்டுங்கள்" },
+      { original: "Cakes", label: "கேக்குகளை ஆர்டர் செய்யுங்கள்", query: "கேக்குகளை காட்டுங்கள்" },
+      { original: "Chocolates", label: "சாக்லேட்டுகளை வாங்குங்கள்", query: "சாக்லேட்டுகளை காட்டுங்கள்" },
+      { original: "categories", label: "வகைகளை உலாவுக", query: "வகைகளை காட்டுங்கள்" },
+      { original: "track my order", label: "எனது ஆர்டரை கண்காணிக்கவும்", query: "எனது ஆர்டரை கண்காணிக்க முடியுமா" },
+      { original: "Check Delivery", label: "டெலிவரி சரிபார்க்கவும்", query: "டெலிவரியை சரிபார்க்கவும்" }
     ],
     cartAdded: (name) => `${name} உங்கள் கூடையில் சேர்க்கப்பட்டது! 🛒`,
     orderCreated: "உங்கள் ஆர்டர் வெற்றிகரமாக உருவாக்கப்பட்டது! 🎉",
@@ -276,13 +276,13 @@ const LOCALIZATION: Record<string, {
     inputPlaceholderEmpty: "Ungaluku vena de kelunga...",
     inputPlaceholderFloating: "Kapruka Agent kitta kelunga...",
     categories: [
-      { original: "gifts for her", label: "🎁 Avalukkana Parisugal" },
-      { original: "Flowers", label: "💐 Pookkal Anuppunga" },
-      { original: "Cakes", label: "🎂 Cakes Order Pannunga" },
-      { original: "Chocolates", label: "🍫 Chocolates Vaangunga" },
-      { original: "categories", label: "🛍️ Categories Paarunga" },
-      { original: "track my order", label: "📦 En Order Ah Track Pannunga", query: "Can I track my order" },
-      { original: "Check Delivery", label: "🚚 Delivery Check Pannunga" }
+      { original: "gifts for her", label: "Avalukkana Parisugal", query: "Avalukkana parisugalai kattunga" },
+      { original: "Flowers", label: "Pookkal Anuppunga", query: "Pookkalai kattunga" },
+      { original: "Cakes", label: "Cakes Order Pannunga", query: "Cakes kattunga" },
+      { original: "Chocolates", label: "Chocolates Vaangunga", query: "Chocolates kattunga" },
+      { original: "categories", label: "Categories Paarunga", query: "Categories kattunga" },
+      { original: "track my order", label: "En Order Ah Track Pannunga", query: "En order ah track panna mudiyuma" },
+      { original: "Check Delivery", label: "Delivery Check Pannunga", query: "Delivery check pannunga" }
     ],
     cartAdded: (name) => `${name} unga basket la add panniyachu! 🛒`,
     orderCreated: "Unga order successfully create panniyachu! 🎉",
@@ -1149,16 +1149,29 @@ export default function Home() {
               </div>
 
               {/* Categories */}
-              <div style={{ width: "100%", maxWidth: "800px", display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "10px" }}>
-                {(LOCALIZATION[language] || LOCALIZATION["English"]).categories.map((cat) => (
-                  <button
-                    key={cat.original}
-                    onClick={() => handleSendMessage(cat.query || `Show me ${cat.original}`)}
-                    style={{ background: "#5322B8", color: "#fff", border: "none", borderRadius: "999px", padding: "6px 18px", fontSize: "0.85rem", fontWeight: 600, cursor: "pointer", transition: "all 0.2s ease" }}
-                  >
-                    {cat.label}
-                  </button>
-                ))}
+              <div style={{ width: "100%", maxWidth: "800px", display: "flex", flexDirection: "column", alignItems: "center", gap: "10px" }}>
+                <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "10px" }}>
+                  {(LOCALIZATION[language] || LOCALIZATION["English"]).categories.slice(0, 4).map((cat) => (
+                    <button
+                      key={cat.original}
+                      onClick={() => handleSendMessage(cat.query || `Show me ${cat.original}`)}
+                      style={{ background: "#5322B8", color: "#fff", border: "none", borderRadius: "999px", padding: "6px 18px", fontSize: "0.85rem", fontWeight: 600, cursor: "pointer", transition: "all 0.2s ease" }}
+                    >
+                      {cat.label}
+                    </button>
+                  ))}
+                </div>
+                <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "10px" }}>
+                  {(LOCALIZATION[language] || LOCALIZATION["English"]).categories.slice(4).map((cat) => (
+                    <button
+                      key={cat.original}
+                      onClick={() => handleSendMessage(cat.query || `Show me ${cat.original}`)}
+                      style={{ background: "#5322B8", color: "#fff", border: "none", borderRadius: "999px", padding: "6px 18px", fontSize: "0.85rem", fontWeight: 600, cursor: "pointer", transition: "all 0.2s ease" }}
+                    >
+                      {cat.label}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               {/* Footer */}
