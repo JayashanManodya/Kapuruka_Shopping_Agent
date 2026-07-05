@@ -1,54 +1,46 @@
-# Kapuruka Shopping Agent
+# Kapuruka Shopping Agent (KIKO)
 
-Kapuruka Shopping Agent is a full-stack AI-powered shopping assistant that provides intelligent product recommendations, seamless conversational commerce, and shopping automation. The project utilizes a modern architecture comprising a Next.js frontend and a Python/FastAPI backend powered by LangChain and LangGraph for robust AI agent orchestration.
+Kapuruka Shopping Agent (aka **KIKO**) is a full-stack, multilingual AI-powered shopping assistant built for Kapruka. It provides intelligent product recommendations, seamless conversational commerce, and shopping automation. By leveraging a Next.js frontend and a Python/FastAPI backend powered by LangGraph, it creates a robust multi-agent orchestration system that serves as a highly intelligent digital storefront.
 
-## Purpose
+## 🎯 Purpose
+The primary purpose of KIKO is to automate and streamline the e-commerce experience. Through a natural, conversational chat interface, users can search for products, manage shopping carts, verify delivery options, place orders, and track shipments. This entirely eliminates the friction of traditional website navigation, providing an accessible and personalized shopping journey.
 
-The primary purpose of the Kapuruka Shopping Agent is to automate and streamline the e-commerce experience. By providing a natural language interface, it allows users to search for products, manage their shopping carts, verify delivery options, place orders, and track shipments—all through an intuitive conversational chat interface, eliminating the need to manually navigate complex website menus.
-
-## Features
-
+## ✨ Key Features
 - **Conversational Commerce**: Shop, checkout, and track orders purely through natural language.
-- **Interactive UI**: Responsive and modern user interface built with Next.js 16 and React 19.
-- **Agent Orchestration**: State-of-the-art AI multi-agent workflows using LangGraph.
-- **Tool Integration**: Incorporates MCP (Model Context Protocol) to securely interface with Kapruka's APIs.
-- **Robust Backend**: High-performance backend API built with FastAPI and SQLModel.
-- **Persistent Memory**: Uses PostgreSQL/SQLite for stateful conversation checkpoints and persistent shopping cart memory.
+- **Multilingual Support**: Fully localized in English, Sinhala (Unicode), Singlish, Tamil (Unicode), and Tanglish, allowing users to communicate naturally in their native languages.
+- **Agent Orchestration**: State-of-the-art AI multi-agent workflows using LangGraph for precise task delegation.
+- **Intelligent Tooling**: Securely interfaces with Kapruka's internal APIs (products, cart, delivery, tracking) using custom tool definitions.
+- **Interactive UI**: Responsive, fluid, and modern user interface built with Next.js 16 and React 19, featuring dynamic localized action buttons.
+- **Persistent Memory**: Uses robust databases (PostgreSQL/SQLite) for stateful conversation checkpoints and cart persistence across sessions.
 
-## AI Agents Architecture
+## 🧠 AI Agents Architecture
+The backend uses a multi-agent system (LangGraph) to handle specific domains of the shopping journey:
+- **Supervisor Agent**: The core orchestrator. Analyzes the user's intent and routes the request to the correct specialized worker.
+- **Search Agent**: Browses categories, searches for items (e.g., Gifts, Flowers, Cakes, Chocolates), fetches product details, and adds items to the cart.
+- **Checkout Agent**: Manages the checkout flow, validates delivery cities/dates via the `check_delivery` tool, and generates guest checkout orders.
+- **Tracking Agent**: Checks real-time order statuses using a provided order number.
 
-The backend uses a multi-agent system powered by LangGraph to handle different aspects of the shopping journey:
+## 🚀 Advantages
+- **Frictionless Shopping**: Users complete their entire journey from discovery to checkout without ever leaving the chat window.
+- **Cultural & Linguistic Inclusion**: Native support for Sri Lankan languages and transliterations bridges the digital divide.
+- **Stateful Interactions**: The agent remembers your cart contents, previous queries, and session context natively.
+- **Extensible Architecture**: Easy to plug in new agent tools or additional LLM capabilities.
 
-- **Supervisor Agent**: The orchestrator that analyzes the user's prompt and routes the request to the most appropriate specialized worker agent.
-- **Search Agent**: Helps users browse categories, search for specific products, fetch detailed product information, and add items to their cart.
-- **Checkout Agent**: Manages the checkout flow, including validating delivery cities, checking delivery dates, and generating guest checkout orders.
-- **Tracking Agent**: Allows users to check the real-time status of their placed orders using an order number.
-- **Verification Agent**: A final safety and quality check node that validates the AI's proposed response before it is sent back to the user, ensuring accuracy and helpfulness.
-
-## Advantages
-
-- **Frictionless Shopping**: Users can complete their entire shopping journey from discovery to checkout without leaving the chat window.
-- **Intelligent Routing**: Specialized agents ensure high accuracy and tailored responses for specific tasks (e.g., tracking vs. searching).
-- **Stateful Interactions**: The agent remembers your cart contents, previous queries, and preferences across the session.
-- **Extensible Architecture**: The Model Context Protocol (MCP) and LangGraph setup make it incredibly easy to add new tools or agent behaviors in the future.
-
-## Tech Stack
-
+## 💻 Tech Stack
 ### Frontend
 - **Framework**: Next.js 16
 - **Library**: React 19
+- **Styling/UI**: Lucide Icons, Custom CSS
 - **Authentication**: NextAuth.js
 - **Language**: TypeScript
 
 ### Backend
 - **API Framework**: FastAPI, Uvicorn
-- **AI/LLM**: LangChain, LangGraph, Groq, OpenAI
+- **AI/LLM**: LangChain, LangGraph, OpenAI
 - **Database**: SQLModel, aiosqlite, asyncpg, PostgreSQL/SQLite
-- **Tooling**: Model Context Protocol (MCP) Adapters
 - **Language**: Python 3.14+
 
-## Folder Structure
-
+## 📁 Folder Structure
 ```
 Kapuruka_Shopping_Agent/
 ├── backend/                # Python FastAPI application and AI Agent logic
@@ -57,22 +49,20 @@ Kapuruka_Shopping_Agent/
 │   ├── pyproject.toml      # Backend dependencies (uv)
 │   └── ...
 ├── frontend/               # Next.js React frontend
-│   ├── src/                # Source code for pages and components
+│   ├── src/                # Source code for pages and components (e.g. page.tsx)
 │   ├── package.json        # Frontend dependencies
 │   └── ...
 └── test/                   # Integration and end-to-end tests
 ```
 
-## Prerequisites
+## 🛠️ Getting Started
 
+### Prerequisites
 - Node.js (v20+)
 - Python (v3.14+)
 - `uv` package manager for Python
 
-## Getting Started
-
 ### 1. Backend Setup
-
 1. Navigate to the backend directory:
    ```bash
    cd backend
@@ -81,16 +71,16 @@ Kapuruka_Shopping_Agent/
    ```bash
    uv sync
    ```
-3. Set up environment variables:
-   Create a `.env` file in the `backend` directory and add your required keys (e.g., `GROQ_API_KEY`, `OPENAI_API_KEY`, database credentials).
+3. Set up environment variables in `.env`:
+   ```env
+   OPENAI_API_KEY=your_key
+   ```
 4. Run the backend development server:
    ```bash
    uv run main.py
    ```
-   *(or using uvicorn: `uvicorn app.api:app --reload`)*
 
 ### 2. Frontend Setup
-
 1. Navigate to the frontend directory:
    ```bash
    cd frontend
@@ -99,18 +89,18 @@ Kapuruka_Shopping_Agent/
    ```bash
    npm install
    ```
-3. Set up environment variables:
-   Create a `.env` or `.env.local` file in the `frontend` directory with your necessary variables (e.g., `NEXTAUTH_SECRET`, backend API URLs).
+3. Set up environment variables in `.env` or `.env.local`:
+   ```env
+   NEXTAUTH_SECRET=your_secret
+   ```
 4. Run the frontend development server:
    ```bash
    npm run dev
    ```
 
-## Development
+## 🌐 Development
+- **Frontend**: Runs on `http://localhost:3000`.
+- **Backend**: Runs on `http://localhost:8000`.
 
-- **Frontend**: The frontend runs on `http://localhost:3000`.
-- **Backend**: The backend API typically runs on `http://localhost:8000` (check your console output).
-
-## License
-
+## 📜 License
 This project is licensed under the MIT License.
