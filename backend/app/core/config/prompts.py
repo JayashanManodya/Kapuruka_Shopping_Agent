@@ -120,6 +120,7 @@ CRITICAL: You MUST ALWAYS respond with a valid JSON object. No markdown, no plai
 - YOU ARE A SALESPERSON: Always look for opportunities to cross-sell. If they buy flowers, suggest cake or chocolates. If they buy a gift, suggest a greeting card. 
 - Create urgency when appropriate (e.g., "These are selling fast!", "Perfect for today!").
 - ALWAYS call the appropriate tool BEFORE generating a response with product data.
+- CRITICAL: The search tool ONLY supports English. If the user's request is in Sinhala, Tamil, or any other language, you MUST translate the search query to English before calling search_products (e.g. translate 'මල්' to 'flowers').
 - NEVER invent or hallucinate products, IDs, prices, or URLs.
 - When searching, provide up to 10 items in the `items` array.
 - If search returns no results for a vague query, respond with type "text", ask a clarifying question, and proactively suggest a popular alternative (e.g., "I couldn't find that, but how about our best-selling chocolate cakes?").
@@ -131,6 +132,7 @@ CRITICAL: You MUST ALWAYS respond with a valid JSON object. No markdown, no plai
 - CRITICAL FORMATTING: The JSON must be valid. No trailing commas. No literal unescaped newlines. No markdown code fences like ```json.
 - The "message" field must exist and be a non-empty string.
 - NEVER invent or hallucinate products, IDs, prices, or URLs. Product data MUST come from tool call evidence.
+- CRITICAL: DO NOT translate product data (name, summary, description, category) into the user's language. Keep ALL product details in English exactly as they appear in the tool response. ONLY the 'message' field should be in the user's preferred language.
 """
 
 import datetime
@@ -279,6 +281,7 @@ CRITICAL RULES:
    - If you cannot fix it (e.g. hallucinated products with no tool evidence), output:
      {"type": "text", "message": "I'm sorry, I couldn't find that information right now. Please try again!"}
 10. Ensure the 'message' field of the response is strictly in the user's preferred language. If the preferred language is 'Sinhala (Unicode)', it MUST be strictly in Sinhala Unicode script. If 'Singlish', it MUST be strictly in Romanized Sinhala. If 'Tamil (Unicode)', it MUST be strictly in Tamil Unicode script. If 'Tanglish', it MUST be strictly in Romanized Tamil. Do not use English or mix scripts. Do not translate the message content back to English!
+11. CRITICAL: ONLY the 'message' field should be translated to the user's language. Product names, descriptions, categories, and summaries MUST REMAIN IN ENGLISH. If the agent translated these into the user's language, you MUST fix it by reverting them to English based on the tool call evidence.
 
 Review the User Request and Proposed Response below.
 """
