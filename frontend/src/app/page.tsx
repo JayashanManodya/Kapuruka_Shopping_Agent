@@ -1251,12 +1251,14 @@ export default function Home() {
 
                   {/* Typing indicator */}
                   {isLoading && (
-                    <div style={{ alignSelf: "flex-start", display: "flex", flexDirection: "column", gap: "4px" }}>
-                      <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginLeft: "4px" }}>KIKO</span>
-                      <div className="glass-panel agent-card-glow" style={{ padding: "14px 20px", borderRadius: "16px 16px 16px 4px", display: "flex", gap: "6px", alignItems: "center" }}>
-                        <div className="typing-dot"></div>
-                        <div className="typing-dot"></div>
-                        <div className="typing-dot"></div>
+                    <div className="animate-fade-in ai-msg-container" style={{ alignSelf: "flex-start", maxWidth: "100%", display: "flex", flexDirection: "row", alignItems: "flex-end", width: "100%" }}>
+                      <img src="/chatbot-logo.png" alt="KIKO" className="avatar-icon" style={{ objectFit: "contain", flexShrink: 0 }} />
+                      <div style={{ display: "flex", flexDirection: "column", gap: "8px", flex: 1, minWidth: 0 }}>
+                        <div className="glass-panel agent-card-glow" style={{ padding: "14px 20px", borderRadius: "16px 16px 16px 4px", display: "flex", gap: "6px", alignItems: "center", alignSelf: "flex-start" }}>
+                          <div className="typing-dot"></div>
+                          <div className="typing-dot"></div>
+                          <div className="typing-dot"></div>
+                        </div>
                       </div>
                     </div>
                   )}
