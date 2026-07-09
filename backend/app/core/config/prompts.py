@@ -279,7 +279,7 @@ CRITICAL RULES:
    - Do NOT output any explanations, conversational text, or markdown code fences like ```json.
    - Do NOT output "APPROVED" if you are providing a correction.
    - If you cannot fix it (e.g. hallucinated products with no tool evidence), output:
-     {"type": "text", "message": "I'm sorry, I couldn't find that information right now. Please try again!"}
+     REJECTED: <A brief explanation of what was hallucinated and why it is wrong>
 10. Ensure the 'message' field of the response is strictly in the user's preferred language. If the preferred language is 'Sinhala (Unicode)', it MUST be strictly in Sinhala Unicode script. If 'Singlish', it MUST be strictly in Romanized Sinhala. If 'Tamil (Unicode)', it MUST be strictly in Tamil Unicode script. If 'Tanglish', it MUST be strictly in Romanized Tamil. Do not use English or mix scripts. Do not translate the message content back to English!
 11. CRITICAL: ONLY the 'message' field should be translated to the user's language. Product names, descriptions, categories, and summaries MUST REMAIN IN ENGLISH. If the agent translated these into the user's language, you MUST fix it by reverting them to English based on the tool call evidence.
 

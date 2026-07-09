@@ -10,22 +10,25 @@ class KaprukaMCPClient:
     async def call(self, tool_name: str, params: dict):
         params = {key: value for key, value in params.items() if value is not None}
 
-        async with streamablehttp_client(settings.server_url) as (
-            read_stream,
-            write_stream,
-            _,
-        ):
-            async with ClientSession(
+        try:
+            async with streamablehttp_client(settings.server_url) as (
                 read_stream,
                 write_stream,
-            ) as session:
-                await session.initialize()
-                return await session.call_tool(
-                    tool_name,
-                    arguments={
-                        "params": params
-                    },
-                )
+                _,
+            ):
+                async with ClientSession(
+                    read_stream,
+                    write_stream,
+                ) as session:
+                    await session.initialize()
+                    return await session.call_tool(
+                        tool_name,
+                        arguments={
+                            "params": params
+                        },
+                    )
+        except Exception as e:
+            return f"MCP Connection Error: {str(e)}. The external Kapruka database is rate-limiting us or offline. Please tell the user to wait a moment and try again."
 
 client = KaprukaMCPClient()
 
