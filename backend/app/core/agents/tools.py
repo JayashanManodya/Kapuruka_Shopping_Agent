@@ -10,22 +10,25 @@ class KaprukaMCPClient:
     async def call(self, tool_name: str, params: dict):
         params = {key: value for key, value in params.items() if value is not None}
 
-        async with streamablehttp_client(settings.server_url) as (
-            read_stream,
-            write_stream,
-            _,
-        ):
-            async with ClientSession(
+        try:
+            async with streamablehttp_client(settings.server_url) as (
                 read_stream,
                 write_stream,
-            ) as session:
-                await session.initialize()
-                return await session.call_tool(
-                    tool_name,
-                    arguments={
-                        "params": params
-                    },
-                )
+                _,
+            ):
+                async with ClientSession(
+                    read_stream,
+                    write_stream,
+                ) as session:
+                    await session.initialize()
+                    return await session.call_tool(
+                        tool_name,
+                        arguments={
+                            "params": params
+                        },
+                    )
+        except Exception as e:
+            return f"MCP Connection Error: {str(e)}. The external Kapruka database is rate-limiting us or offline. Please tell the user to wait a moment and try again."
 
 client = KaprukaMCPClient()
 
@@ -52,9 +55,9 @@ async def search_products(product: str, limit: int = 10, category: str | None = 
     """Search purchasable Kapruka products by query and optional filters.
 
     Args:
-        product: Search text forwarded as the Kapruka `q` parameter. MUST be translated to English if the user provides it in another language (e.g. translate Sinhala 'මල්' to 'flowers').
+        product: Search text forwarded as the Kapruka `q` parameter. CRITICAL: You must fix any typos (e.g., 'i cake' -> 'cake', 'bithday' -> 'birthday') and extract ONLY the core product name before searching. Do not include conversational words. MUST be translated to English if the user provides it in another language (e.g. translate Sinhala 'මල්' to 'flowers').
         limit: Maximum number of results to return.
-        category: Optional category filter.
+        category: Optional category filter. CRITICAL: If the user is searching for a generic product type like 'cake' or 'flowers', ALWAYS set this category parameter (e.g., 'cakes', 'flowers') to avoid getting irrelevant accessories (like 'cake moulds' or 'flower pots').
         min_price: Optional minimum price filter.
         max_price: Optional maximum price filter.
         sort: Optional sort key requested by Kapruka.

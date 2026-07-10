@@ -5,7 +5,7 @@ from langgraph.graph.message import add_messages
 from langgraph.prebuilt import create_react_agent
 
 from langchain_openai import ChatOpenAI
-from langchain_groq import ChatGroq
+# from langchain_groq import ChatGroq
 import json
 import os
 import sys
@@ -59,8 +59,9 @@ tracking_agent_node = create_react_agent(
 class AgentState(TypedDict):
     messages: Annotated[Sequence[BaseMessage], add_messages]
     next_node: str
-    active_worker: str
+    assigned_agent: str
     language: str
+    retries: int
 
 def trim_messages_for_llm(messages: Sequence[BaseMessage], max_msgs: int = 15) -> list[BaseMessage]:
     """Keep only the last N messages to save tokens. Ensures we start at a HumanMessage and preserves SystemMessages."""
@@ -107,7 +108,7 @@ async def supervisor_node(state: AgentState) -> dict:
     if route not in valid_routes:
         route = "Search" # default fallback
         
-    return {"active_worker": route}
+    return {"assigned_agent": route, "retries": 0}
 
 async def call_search_agent(state: AgentState) -> dict:
     log_messages("Search Agent", state["messages"])
@@ -249,6 +250,33 @@ async def verification_node(state: AgentState) -> dict:
     if verification_result.upper().startswith("APPROVED"):
         # Pass through unchanged
         return {"next_node": END}
+        
+    if verification_result.upper().startswith("REJECTED:"):
+        current_retries = state.get("retries", 0)
+        if current_retries < 2:
+            warning = HumanMessage(content=f"System Verification Failed: {verification_result}. Please correct your response and try again. Ensure you only use data from tool evidence.")
+            return {
+                "messages": [warning],
+                "next_node": state.get("assigned_agent", "Search"),
+                "retries": current_retries + 1
+            }
+        else:
+            fallback_json = '{"type": "text", "message": "I\'m sorry, I couldn\'t process that request right now due to a system error. Please try again!"}'
+            last_ai_message = None
+            for m in reversed(list(messages)):
+                if m.type == "ai":
+                    last_ai_message = m
+                    break
+            if last_ai_message and getattr(last_ai_message, "id", None):
+                return {
+                    "messages": [AIMessage(content=fallback_json, id=last_ai_message.id)],
+                    "next_node": END
+                }
+            else:
+                return {
+                    "messages": [AIMessage(content=fallback_json)],
+                    "next_node": END
+                }
     
     # If the verifier outputted conversational text and a JSON block, extract just the JSON
     import re
@@ -288,7 +316,7 @@ async def verification_node(state: AgentState) -> dict:
             }
 
 def route_from_supervisor(state: AgentState) -> str:
-    return state.get("active_worker", "Search")
+    return state.get("assigned_agent", "Search")
 
 def route_from_verification(state: AgentState) -> str:
     return state.get("next_node", END)
@@ -308,9 +336,16 @@ workflow.add_conditional_edges(
     route_from_supervisor
 )
 
+# workflow.add_node("Verification", verification_node)
+
 workflow.add_edge("Search", END)
 workflow.add_edge("Checkout", END)
 workflow.add_edge("Tracking", END)
+
+# workflow.add_conditional_edges(
+#     "Verification",
+#     route_from_verification
+# )
 
 # Compile the workflow completely statelessly. 
 # Memory persistence is managed entirely by the frontend via local storage.
