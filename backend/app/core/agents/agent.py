@@ -336,16 +336,16 @@ workflow.add_conditional_edges(
     route_from_supervisor
 )
 
-workflow.add_node("Verification", verification_node)
+# workflow.add_node("Verification", verification_node)
 
-workflow.add_edge("Search", "Verification")
-workflow.add_edge("Checkout", "Verification")
-workflow.add_edge("Tracking", "Verification")
+workflow.add_edge("Search", END)
+workflow.add_edge("Checkout", END)
+workflow.add_edge("Tracking", END)
 
-workflow.add_conditional_edges(
-    "Verification",
-    route_from_verification
-)
+# workflow.add_conditional_edges(
+#     "Verification",
+#     route_from_verification
+# )
 
 # Compile the workflow completely statelessly. 
 # Memory persistence is managed entirely by the frontend via local storage.
