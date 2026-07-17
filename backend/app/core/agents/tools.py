@@ -57,7 +57,7 @@ async def search_products(product: str, limit: int = 10, category: str | None = 
     Args:
         product: Search text forwarded as the Kapruka `q` parameter. CRITICAL: You must fix any typos (e.g., 'i cake' -> 'cake', 'bithday' -> 'birthday') and extract ONLY the core product name before searching. Do not include conversational words. MUST be translated to English if the user provides it in another language (e.g. translate Sinhala 'මල්' to 'flowers').
         limit: Maximum number of results to return.
-        category: Optional category filter. CRITICAL: If the user is searching for a generic product type like 'cake' or 'flowers', ALWAYS set this category parameter (e.g., 'cakes', 'flowers') to avoid getting irrelevant accessories (like 'cake moulds' or 'flower pots').
+        category: Optional category filter. CRITICAL: Do NOT set this category parameter unless the user explicitly requested filtering by a specific category name. Pass ONLY the 'product' query text parameter by default.
         min_price: Optional minimum price filter.
         max_price: Optional maximum price filter.
         sort: Optional sort key requested by Kapruka.

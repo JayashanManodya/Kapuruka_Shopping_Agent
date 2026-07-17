@@ -200,10 +200,10 @@ class OrderSummaryResponse(BaseModel):
     model_config = ConfigDict(extra="ignore")
     type: Literal["order_summary"] = "order_summary"
     message: str = Field(description="Message asking user for order confirmation")
-    recipient: RecipientInfo = Field(default_factory=RecipientInfo, description="Recipient details")
-    delivery: DeliveryInfo = Field(default_factory=DeliveryInfo, description="Delivery details")
-    sender: str = Field(default="", description="Sender name")
-    items: list[OrderItem] = Field(default_factory=list, description="List of order items")
+    recipient: Union[RecipientInfo, dict[str, Any]] = Field(default_factory=dict, description="Recipient details")
+    delivery: Union[DeliveryInfo, dict[str, Any]] = Field(default_factory=dict, description="Delivery details")
+    sender: Union[str, dict[str, Any]] = Field(default="", description="Sender name")
+    items: list[Union[OrderItem, dict[str, Any]]] = Field(default_factory=list, description="List of order items")
     delivery_fee: Union[float, int] = Field(default=0.0, description="Delivery fee in LKR")
     grand_total: Union[float, int] = Field(default=0.0, description="Grand total in LKR")
 
@@ -215,7 +215,7 @@ class OrderCreatedResponse(BaseModel):
     checkout_url: str = Field(default="", description="Payment checkout URL")
     order_ref: str = Field(default="", description="Order reference number")
     expires_at: str = Field(default="", description="Expiration time string")
-    totals: OrderTotals = Field(default_factory=OrderTotals, description="Order price totals")
+    totals: Union[OrderTotals, dict[str, Any]] = Field(default_factory=dict, description="Order price totals")
 
 
 class TrackOrderResponse(BaseModel):
@@ -224,11 +224,11 @@ class TrackOrderResponse(BaseModel):
     message: str = Field(description="Status message for order tracking")
     order_ref: str = Field(default="", description="Order reference number")
     status: str = Field(default="", description="Current order status")
-    timeline: list[TrackingTimelineEntry] = Field(default_factory=list, description="Tracking timeline steps")
-    recipient: RecipientInfo = Field(default_factory=RecipientInfo, description="Recipient details")
-    delivery: DeliveryInfo = Field(default_factory=DeliveryInfo, description="Delivery details")
-    payment: PaymentInfo = Field(default_factory=PaymentInfo, description="Payment details")
-    items: list[OrderItem] = Field(default_factory=list, description="List of items in order")
+    timeline: list[Union[TrackingTimelineEntry, dict[str, Any]]] = Field(default_factory=list, description="Tracking timeline steps")
+    recipient: Union[RecipientInfo, dict[str, Any]] = Field(default_factory=dict, description="Recipient details")
+    delivery: Union[DeliveryInfo, dict[str, Any]] = Field(default_factory=dict, description="Delivery details")
+    payment: Union[PaymentInfo, dict[str, Any]] = Field(default_factory=dict, description="Payment details")
+    items: list[Union[OrderItem, dict[str, Any]]] = Field(default_factory=list, description="List of items in order")
 
 
 # ---------------------------------------------------------------------------
