@@ -313,7 +313,7 @@ async def chat(request: ChatRequest):
         
         # Fallback: if verification node didn't set it, parse the last AI message
         if structured_response is None:
-            from app.core.config.response_formats import parse_agent_response
+            from app.models.response_models import parse_agent_response
             last_ai = next(
                 (m for m in reversed(history_list) if m.get("role") == "assistant" and m.get("content")),
                 None
