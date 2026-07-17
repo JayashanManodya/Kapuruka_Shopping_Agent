@@ -20,6 +20,6 @@ class Settings(BaseSettings):
     # LLM Provider Configuration
     groq_api_key: str | None = Field(None, validation_alias="GROQ_API_KEY")
     openai_api_key: str = Field(..., validation_alias="OPENAI_API_KEY")
-    llm_model: str = Field("gpt-4o-mini", validation_alias="LLM_MODEL")
+    llm_model: str = Field("gpt-5-mini", validation_alias="LLM_MODEL")
 
 settings = Settings()
